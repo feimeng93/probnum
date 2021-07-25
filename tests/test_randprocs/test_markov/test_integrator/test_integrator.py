@@ -82,15 +82,11 @@ def both_transitions_ibm():
     "both_transitions",
     [both_transitions_ibm(), both_transitions_ioup(), both_transitions_matern()],
 )
-def test_same_forward_outputs(both_transitions, diffusion):
+def test_same_forward_outputs(both_transitions):
     trans1, trans2 = both_transitions
-    real = 1 + 0.1 * np.random.rand(trans1.dimension)
-    out_1, info1 = trans1.forward_realization(
-        real, t=0.0, dt=0.5, compute_gain=True, _diffusion=diffusion
-    )
-    out_2, info2 = trans2.forward_realization(
-        real, t=0.0, dt=0.5, compute_gain=True, _diffusion=diffusion
-    )
+    real = 1 + 0.1 * np.random.rand(trans1.state_dimension)
+    out_1, info1 = trans1.forward_realization(real, t=0.0, dt=0.5, compute_gain=True)
+    out_2, info2 = trans2.forward_realization(real, t=0.0, dt=0.5, compute_gain=True)
     np.testing.assert_allclose(out_1.mean, out_2.mean)
     np.testing.assert_allclose(out_1.cov, out_2.cov)
     np.testing.assert_allclose(info1["crosscov"], info2["crosscov"])
@@ -101,17 +97,17 @@ def test_same_forward_outputs(both_transitions, diffusion):
     "both_transitions",
     [both_transitions_ibm(), both_transitions_ioup(), both_transitions_matern()],
 )
-def test_same_backward_outputs(both_transitions, diffusion, rng):
+def test_same_backward_outputs(both_transitions, rng):
     trans1, trans2 = both_transitions
-    real = 1 + 0.1 * np.random.rand(trans1.dimension)
-    real2 = 1 + 0.1 * np.random.rand(trans1.dimension)
-    cov = linalg_zoo.random_spd_matrix(rng, dim=trans1.dimension)
+    real = 1 + 0.1 * np.random.rand(trans1.state_dimension)
+    real2 = 1 + 0.1 * np.random.rand(trans1.state_dimension)
+    cov = linalg_zoo.random_spd_matrix(rng, dim=trans1.state_dimension)
     rv = randvars.Normal(real2, cov)
     out_1, info1 = trans1.backward_realization(
-        real, rv, t=0.0, dt=0.5, compute_gain=True, _diffusion=diffusion
+        real, rv, t=0.0, dt=0.5, compute_gain=True
     )
     out_2, info2 = trans2.backward_realization(
-        real, rv, t=0.0, dt=0.5, compute_gain=True, _diffusion=diffusion
+        real, rv, t=0.0, dt=0.5, compute_gain=True
     )
     np.testing.assert_allclose(out_1.mean, out_2.mean)
     np.testing.assert_allclose(out_1.cov, out_2.cov)
