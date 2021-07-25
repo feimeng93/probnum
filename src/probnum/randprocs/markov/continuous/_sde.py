@@ -28,7 +28,9 @@ class SDE(_transition.Transition):
         drift_function: Callable[[FloatArgType, np.ndarray], np.ndarray],
         dispersion_function: Callable[[FloatArgType, np.ndarray], np.ndarray],
         drift_jacobian: Optional[Callable[[FloatArgType, np.ndarray], np.ndarray]],
-        scalar_diffusion: Optional[Callable[[FloatArgType], FloatArgType]] = None,
+        squared_scalar_diffusion: Optional[
+            Callable[[FloatArgType], FloatArgType]
+        ] = None,
     ):
         super().__init__(input_dim=state_dimension, output_dim=state_dimension)
 
@@ -42,7 +44,7 @@ class SDE(_transition.Transition):
         def unit_diffusion(t):
             return 1.0
 
-        self.scalar_diffusion = scalar_diffusion or unit_diffusion
+        self.squared_scalar_diffusion = squared_scalar_diffusion or unit_diffusion
         self.drift_jacobian = drift_jacobian
 
     def forward_realization(
@@ -58,7 +60,6 @@ class SDE(_transition.Transition):
             t=t,
             dt=dt,
             compute_gain=compute_gain,
-            _diffusion=_diffusion,
             **kwargs,
         )
 
@@ -68,7 +69,6 @@ class SDE(_transition.Transition):
         t,
         dt=None,
         compute_gain=False,
-        _diffusion=1.0,
         **kwargs,
     ):
         raise NotImplementedError("Not available.")
@@ -81,7 +81,6 @@ class SDE(_transition.Transition):
         gain=None,
         t=None,
         dt=None,
-        _diffusion=1.0,
         **kwargs,
     ):
         return self._backward_realization_via_backward_rv(
@@ -103,7 +102,6 @@ class SDE(_transition.Transition):
         gain=None,
         t=None,
         dt=None,
-        _diffusion=1.0,
         **kwargs,
     ):
         raise NotImplementedError("Not available.")
@@ -118,15 +116,15 @@ class LinearSDE(SDE):
 
     Parameters
     ----------
-    driftmatfun :
+    drift_matrix_function :
         This is G = G(t). The evaluations of this function are called
         the driftmatrix of the SDE.
         Returns np.ndarray with shape=(n, n)
-    forcevecfun :
+    force_vector_function :
         This is v = v(t). Evaluations of this function are called
         the force(vector) of the SDE.
         Returns np.ndarray with shape=(n,)
-    dispmatfun :
+    dispersion_matrix_function :
         This is L = L(t). Evaluations of this function are called
         the dispersion(matrix) of the SDE.
         Returns np.ndarray with shape=(n, s)
@@ -141,15 +139,38 @@ class LinearSDE(SDE):
 
     def __init__(
         self,
-        dimension: IntArgType,
-        driftmatfun: Callable[[FloatArgType], np.ndarray],
-        forcevecfun: Callable[[FloatArgType], np.ndarray],
-        dispmatfun: Callable[[FloatArgType], np.ndarray],
+        state_dimension: IntArgType,
+        wiener_process_dimension: IntArgType,
+        drift_matrix_function: Callable[[FloatArgType], np.ndarray],
+        force_vector_function: Callable[[FloatArgType], np.ndarray],
+        dispersion_matrix_function: Callable[[FloatArgType], np.ndarray],
+        squared_scalar_diffusion: Optional[
+            Callable[[FloatArgType], FloatArgType]
+        ] = None,
         mde_atol: Optional[FloatArgType] = 1e-6,
         mde_rtol: Optional[FloatArgType] = 1e-6,
         mde_solver: Optional[str] = "RK45",
         forward_implementation: Optional[str] = "classic",
     ):
+
+        # Transform functions to be SDE-compatible and initialize super().
+        def drift_function(t, x):
+            return drift_matrix_function(t) @ x + force_vector_function(t)
+
+        def drift_jacobian(t, x):
+            return drift_matrix_function(t)
+
+        def dispersion_function(t, x):
+            return dispersion_matrix_function(t)
+
+        super().__init__(
+            state_dimension=state_dimension,
+            wiener_process_dimension=wiener_process_dimension,
+            drift_function=drift_function,
+            drift_jacobian=drift_jacobian,
+            dispersion_function=dispersion_function,
+            squared_scalar_diffusion=squared_scalar_diffusion,
+        )
 
         # Choose implementation for forward transitions
         choose_mde_forward_implementation = {
@@ -164,15 +185,9 @@ class LinearSDE(SDE):
         # replicate the scheme from DiscreteGaussian here, in which
         # the initialisation decides between, e.g., classic and sqrt implementations.
 
-        self.driftmatfun = driftmatfun
-        self.forcevecfun = forcevecfun
-        super().__init__(
-            dimension=dimension,
-            driftfun=(lambda t, x: self.driftmatfun(t) @ x + self.forcevecfun(t)),
-            dispmatfun=dispmatfun,
-            jacobfun=(lambda t, x: self.driftmatfun(t)),
-        )
-
+        # Store remaining functions and attributes
+        self.drift_matrix_function = drift_matrix_function
+        self.force_vector_function = force_vector_function
         self.mde_atol = mde_atol
         self.mde_rtol = mde_rtol
         self.mde_solver = mde_solver
@@ -183,7 +198,6 @@ class LinearSDE(SDE):
         t,
         dt=None,
         _compute_gain=False,
-        _diffusion=1.0,
         **kwargs,
     ):
         if dt is None:
@@ -191,7 +205,7 @@ class LinearSDE(SDE):
                 "Continuous-time transitions require a time-increment ``dt``."
             )
 
-        return self._mde_forward_implementation(rv, t, dt, _diffusion=_diffusion)
+        return self._mde_forward_implementation(rv, t, dt)
 
     def backward_rv(
         self,
@@ -201,7 +215,6 @@ class LinearSDE(SDE):
         gain=None,
         t=None,
         dt=None,
-        _diffusion=1.0,
         **kwargs,
     ):
         if dt is None:
@@ -215,12 +228,11 @@ class LinearSDE(SDE):
             rv=rv,
             t=t,
             dt=dt,
-            _diffusion=_diffusion,
         )
 
     # Forward and backward implementation(s)
 
-    def _solve_mde_forward_classic(self, rv, t, dt, _diffusion=1.0):
+    def _solve_mde_forward_classic(self, rv, t, dt):
         """Solve forward moment differential equations (MDEs)."""
         dim = rv.mean.shape[0]
         mde, y0 = self._setup_vectorized_mde_forward_classic(
@@ -241,13 +253,12 @@ class LinearSDE(SDE):
             "sol_cov": sol_cov,
         }
 
-    def _solve_mde_forward_sqrt(self, rv, t, dt, _diffusion=1.0):
+    def _solve_mde_forward_sqrt(self, rv, t, dt):
         """Solve forward moment differential equations (MDEs) using a square-root
         implementation."""
         dim = rv.mean.shape[0]
         mde, y0 = self._setup_vectorized_mde_forward_sqrt(
             rv,
-            _diffusion=_diffusion,
         )
 
         sol, new_mean, new_cov_cholesky = self._solve_mde_forward(mde, y0, t, dt, dim)
@@ -291,18 +302,15 @@ class LinearSDE(SDE):
 
         return sol, new_mean, new_cov_or_cov_cholesky
 
-    def _solve_mde_backward(self, rv_obtained, rv, t, dt, _diffusion=1.0):
+    def _solve_mde_backward(self, rv_obtained, rv, t, dt):
         """Solve backward moment differential equations (MDEs)."""
-        _, mde_forward_info = self._mde_forward_implementation(
-            rv, t, dt, _diffusion=_diffusion
-        )
+        _, mde_forward_info = self._mde_forward_implementation(rv, t, dt)
 
         mde_forward_sol_mean = mde_forward_info["sol_mean"]
         mde_forward_sol_cov = mde_forward_info["sol_cov"]
 
         mde, y0 = self._setup_vectorized_mde_backward(
             rv_obtained,
-            _diffusion=_diffusion,
         )
         # Use forward solution for mean and covariance in scipy's ivp
         # Dense output for lambda-expression
@@ -332,7 +340,7 @@ class LinearSDE(SDE):
             "sol_cov": sol_cov,
         }
 
-    def _setup_vectorized_mde_forward_classic(self, initrv, _diffusion=1.0):
+    def _setup_vectorized_mde_forward_classic(self, initrv):
         """Set up forward moment differential equations (MDEs).
 
         Compute an ODE vector field that represents the MDEs and is compatible with
@@ -350,7 +358,7 @@ class LinearSDE(SDE):
             u = self.forcevecfun(t)
             L = self.dispmatfun(t)
             new_mean = G @ mean + u
-            new_cov = G @ cov + cov @ G.T + _diffusion * L @ L.T
+            new_cov = G @ cov + cov @ G.T + self.squared_scalar_diffusion(t) * L @ L.T
 
             # Vectorize outcome
             new_cov_flat = new_cov.flatten()
@@ -362,7 +370,7 @@ class LinearSDE(SDE):
 
         return f, y0
 
-    def _setup_vectorized_mde_forward_sqrt(self, initrv, _diffusion=1.0):
+    def _setup_vectorized_mde_forward_sqrt(self, initrv):
         r"""Set up forward moment differential equations (MDEs) using a square-root
         implementation. (https://ieeexplore.ieee.org/document/4045974)
 
@@ -438,9 +446,9 @@ class LinearSDE(SDE):
             G_bar = scipy.linalg.solve_triangular(
                 cov_cholesky, G @ cov_cholesky, lower=True
             )
-            L_bar = np.sqrt(_diffusion) * scipy.linalg.solve_triangular(
-                cov_cholesky, L, lower=True
-            )
+            L_bar = np.sqrt(
+                self.squared_scalar_diffusion(t)
+            ) * scipy.linalg.solve_triangular(cov_cholesky, L, lower=True)
             M = G_bar + G_bar.T + L_bar @ L_bar.T
 
             new_cov_cholesky = tril_to_positive_tril(
@@ -457,7 +465,7 @@ class LinearSDE(SDE):
 
         return f, y0
 
-    def _setup_vectorized_mde_backward(self, finalrv_obtained, _diffusion=1.0):
+    def _setup_vectorized_mde_backward(self, finalrv_obtained):
         """Set up backward moment differential equations (MDEs).
 
         Compute an ODE vector field that represents the MDEs and is compatible with
@@ -478,7 +486,7 @@ class LinearSDE(SDE):
             mde_forward_sol_cov_mat = mde_forward_sol_cov(t)
             mde_forward_sol_mean_vec = mde_forward_sol_mean(t)
 
-            LL = _diffusion * L @ L.T
+            LL = self.squared_scalar_diffusion(t) * L @ L.T
             LL_inv_cov = np.linalg.solve(mde_forward_sol_cov_mat, LL.T).T
 
             new_mean = G @ mean + LL_inv_cov @ (mean - mde_forward_sol_mean_vec) + u
