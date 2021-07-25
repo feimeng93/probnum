@@ -27,6 +27,7 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
         prior_markov_process,
         locations: Optional[Iterable[FloatArgType]] = None,
         states: Optional[Iterable[randvars.RandomVariable]] = None,
+        transitions: Optional[Iterable[_transition.Transition]] = None,
     ) -> None:
         super().__init__(
             initarg=prior_markov_process.initarg,
@@ -35,6 +36,7 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
         )
         self._locations = list(locations) if locations is not None else []
         self._states = list(states) if states is not None else []
+        self._transitions = list(transitions) if transitions is not None else []
         self._frozen = False
 
     def __call__(self, args: _InputType) -> randvars.RandomVariable[_OutputType]:
@@ -64,3 +66,8 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
         sample: np.ndarray,
     ) -> np.ndarray:
         raise NotImplementedError
+
+    def append(self, state):
+        self.locations.append(state.t)
+        self.states.append(state.rv)
+        self.transitions.append(state.transition)
