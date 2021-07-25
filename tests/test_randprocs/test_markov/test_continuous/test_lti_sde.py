@@ -87,7 +87,9 @@ class TestLTISDE(test_linear_sde.TestLinearSDE):
         print(disc1.state_trans_mat, P @ disc2.state_trans_mat @ P.inv())
         print(disc1.proc_noise_cov_mat, P @ disc2.proc_noise_cov_mat @ P)
 
-        # something is wrong with this shift vector here?!?!
+        #
+        print("something is wrong with this shift vector here?!?!")
+        assert False
         print(disc1.shift_vec, P @ disc2.shift_vec)
         print()
         # Forward test
