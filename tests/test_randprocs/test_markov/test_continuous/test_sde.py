@@ -185,11 +185,14 @@ class TestLTISDE(TestLinearSDE):
     def test_discretize_no_force(self):
         """LTISDE.discretize() works if there is zero force (there is an "if" in the
         fct)."""
-        self.transition.force_vector = 0.0 * self.transition.force_vector
+        new_trans = self.transition.replace(
+            force_vector=0.0 * self.transition.force_vector
+        )
+
         assert (
-            np.linalg.norm(self.transition.force_vector_function(0.0)) == 0.0
+            np.linalg.norm(new_trans.force_vector_function(0.0)) == 0.0
         )  # side quest/test
-        out = self.transition.discretize(dt=0.1)
+        out = new_trans.discretize(dt=0.1)
         assert isinstance(out, randprocs.markov.discrete.DiscreteLTIGaussian)
 
     def test_backward_rv(self, some_normal_rv1, some_normal_rv2):

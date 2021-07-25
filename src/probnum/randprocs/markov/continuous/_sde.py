@@ -107,6 +107,31 @@ class SDE(_transition.Transition):
     ):
         raise NotImplementedError("Not available.")
 
+    def replace(self, **changes):
+        """Create a new object of the same type, replacing fields with values from
+        changes."""
+
+        def replace(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        state_dimension = replace("state_dimension")
+        wiener_process_dimension = replace("wiener_process_dimension")
+        drift_function = replace("drift_function")
+        dispersion_function = replace("dispersion_function")
+        drift_jacobian = replace("drift_jacobian")
+        squared_scalar_diffusion_function = replace("squared_scalar_diffusion_function")
+        return SDE(
+            state_dimension=state_dimension,
+            wiener_process_dimension=wiener_process_dimension,
+            drift_function=drift_function,
+            dispersion_function=dispersion_function,
+            drift_jacobian=drift_jacobian,
+            squared_scalar_diffusion_function=squared_scalar_diffusion_function,
+        )
+
 
 class LinearSDE(SDE):
     """Linear stochastic differential equation (SDE),
@@ -504,6 +529,72 @@ class LinearSDE(SDE):
 
         return f, y0
 
+    def replace(self, **changes):
+        """Create a new object of the same type, replacing fields with values from
+        changes."""
+
+        def replace_key(key):
+            """If the key is part of the desired changes, change appropriately.
+
+            Otherwise, take the current value.
+            """
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        state_dimension = replace_key("state_dimension")
+        wiener_process_dimension = replace_key("wiener_process_dimension")
+
+        drift_matrix_function = replace_key("drift_matrix_function")
+        dispersion_matrix_function = replace_key("dispersion_matrix_function")
+        force_vector_function = replace_key("force_vector_function")
+        squared_scalar_diffusion_function = replace_key(
+            "squared_scalar_diffusion_function"
+        )
+
+        mde_atol = replace_key("mde_atol")
+        mde_rtol = replace_key("mde_rtol")
+        mde_solver = replace_key("mde_solver")
+        forward_implementation = replace_key("forward_implementation")
+
+        return LinearSDE(
+            state_dimension=state_dimension,
+            wiener_process_dimension=wiener_process_dimension,
+            drift_matrix_function=drift_matrix_function,
+            dispersion_matrix_function=dispersion_matrix_function,
+            force_vector_function=force_vector_function,
+            squared_scalar_diffusion_function=squared_scalar_diffusion_function,
+            mde_atol=mde_atol,
+            mde_rtol=mde_rtol,
+            mde_solver=mde_solver,
+            forward_implementation=forward_implementation,
+        )
+
+    #
+    # def replace(self, **changes):
+    #     """Create a new object of the same type, replacing fields with values from changes."""
+    #
+    #     def replace(key):
+    #         try:
+    #             return changes[key]
+    #         except KeyError:
+    #             return getattr(self, key)
+    #     state_dimension = replace("state_dimension")
+    #     wiener_process_dimension = replace("wiener_process_dimension")
+    #     drift_function = replace("drift_function")
+    #     dispersion_function = replace("dispersion_function")
+    #     drift_jacobian = replace("drift_jacobian")
+    #     squared_scalar_diffusion_function = replace("squared_scalar_diffusion_function")
+    #     return SDE(
+    #         state_dimension=state_dimension,
+    #         wiener_process_dimension=wiener_process_dimension,
+    #         drift_function=drift_function,
+    #         dispersion_function=dispersion_function,
+    #         drift_jacobian=drift_jacobian,
+    #         squared_scalar_diffusion_function=squared_scalar_diffusion_function,
+    #     )
+
 
 class LTISDE(LinearSDE):
     """Linear time-invariant continuous Markov models of the form.
@@ -568,6 +659,7 @@ class LTISDE(LinearSDE):
         self.drift_matrix = drift_matrix
         self.force_vector = force_vector
         self.dispersion_matrix = dispersion_matrix
+        self.squared_scalar_diffusion = squared_scalar_diffusion
         self.forward_implementation = forward_implementation
         self.backward_implementation = backward_implementation
 
@@ -648,6 +740,36 @@ class LTISDE(LinearSDE):
             qh,
             forward_implementation=self.forward_implementation,
             backward_implementation=self.backward_implementation,
+        )
+
+    def replace(self, **changes):
+        """Create a new object of the same type, replacing fields with values from
+        changes."""
+
+        def replace_key(key):
+            """If the key is part of the desired changes, change appropriately.
+
+            Otherwise, take the current value.
+            """
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        drift_matrix = replace_key("drift_matrix")
+        dispersion_matrix = replace_key("dispersion_matrix")
+        force_vector = replace_key("force_vector")
+        squared_scalar_diffusion = replace_key("squared_scalar_diffusion")
+        forward_implementation = replace_key("forward_implementation")
+        backward_implementation = replace_key("backward_implementation")
+
+        return LTISDE(
+            drift_matrix=drift_matrix,
+            dispersion_matrix=dispersion_matrix,
+            force_vector=force_vector,
+            squared_scalar_diffusion=squared_scalar_diffusion,
+            forward_implementation=forward_implementation,
+            backward_implementation=backward_implementation,
         )
 
 
