@@ -196,17 +196,18 @@ class LTISDE(_linear_sde.LinearSDE):
             backward_implementation=backward_implementation,
         )
 
-    def duplicate_with_changed_coordinates(self, linop):
-
-        new_drift_matrix = linop.inv() @ self.drift_matrix @ linop
-        force_vector = linop.inv() @ self.force_vector
-        dispersion_matrix = linop.inv() @ self.dispersion_matrix
-
-        return self.duplicate(
-            drift_matrix=new_drift_matrix,
-            force_vector=force_vector,
-            dispersion_matrix=dispersion_matrix,
-        )
+    #
+    # def duplicate_with_changed_coordinates(self, linop):
+    #
+    #     new_drift_matrix = linop.inv() @ self.drift_matrix @ linop
+    #     force_vector = linop.inv() @ self.force_vector
+    #     dispersion_matrix = linop.inv() @ self.dispersion_matrix
+    #
+    #     return self.duplicate(
+    #         drift_matrix=new_drift_matrix,
+    #         force_vector=force_vector,
+    #         dispersion_matrix=dispersion_matrix,
+    #     )
 
 
 def _check_initial_state_dimensions(drift_matrix, force_vector, dispersion_matrix):

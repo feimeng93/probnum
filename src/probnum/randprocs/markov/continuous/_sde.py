@@ -131,37 +131,37 @@ class SDE(_transition.Transition):
             squared_scalar_diffusion_function=squared_scalar_diffusion_function,
         )
 
-    def duplicate_with_changed_coordinates(self, linop):
-        """Change the coordinate system.
-
-        .. math:: dx(t) = g(t, x(t)) dt + l(t, x(t)) dw(t)
-
-        becomes (:math:`z := P x(t)`)
-
-        .. math:: dz(t) = P g(t, P^{-1} z(t)) dt + P l(t, P^{-1} z(t)) dw(t)
-
-
-        tran = Transition()
-        new_tran = tran.duplicate_with_changed_coordinates(np.eye())
-        """
-
-        def new_drift_function(t, x, P=linop):
-            z = P @ x
-            gz = self.drift_function(t, z)
-            return P.inv() @ gz
-
-        def new_drift_jacobian(t, x, P=linop):
-            z = P @ x
-            dg = self.drift_jacobian(t, z)
-            return P.inv() @ dg @ P
-
-        def new_dispersion_function(t, x, P=linop):
-            z = P @ x
-            lz = self.dispersion_function(t, z)
-            return P.inv() @ lz
-
-        return self.duplicate(
-            drift_function=new_drift_function,
-            drift_jacobian=new_drift_jacobian,
-            dispersion_function=new_dispersion_function,
-        )
+    # def duplicate_with_changed_coordinates(self, linop):
+    #     """Change the coordinate system.
+    #
+    #     .. math:: dx(t) = g(t, x(t)) dt + l(t, x(t)) dw(t)
+    #
+    #     becomes (:math:`z := P x(t)`)
+    #
+    #     .. math:: dz(t) = P g(t, P^{-1} z(t)) dt + P l(t, P^{-1} z(t)) dw(t)
+    #
+    #
+    #     tran = Transition()
+    #     new_tran = tran.duplicate_with_changed_coordinates(np.eye())
+    #     """
+    #
+    #     def new_drift_function(t, x, P=linop):
+    #         z = P @ x
+    #         gz = self.drift_function(t, z)
+    #         return P.inv() @ gz
+    #
+    #     def new_drift_jacobian(t, x, P=linop):
+    #         z = P @ x
+    #         dg = self.drift_jacobian(t, z)
+    #         return P.inv() @ dg @ P
+    #
+    #     def new_dispersion_function(t, x, P=linop):
+    #         z = P @ x
+    #         lz = self.dispersion_function(t, z)
+    #         return P.inv() @ lz
+    #
+    #     return self.duplicate(
+    #         drift_function=new_drift_function,
+    #         drift_jacobian=new_drift_jacobian,
+    #         dispersion_function=new_dispersion_function,
+    #     )

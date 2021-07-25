@@ -76,25 +76,26 @@ class TestLinearSDE(test_sde.TestSDE):
                 t=0.0,
             )
 
-    def test_duplicate_with_changed_coordinates(self, some_normal_rv1, some_normal_rv2):
-
-        # Inexact transition, so we need a higher-res version
-        high_res_transition = self.transition.duplicate(mde_atol=1e-10, mde_rtol=1e-10)
-
-        P = linops.Scaling(np.arange(3, 3 + len(some_normal_rv1.mean)))
-        changed_transition = high_res_transition.duplicate_with_changed_coordinates(
-            linop=P
-        )
-
-        # Forward test
-        x1, _ = high_res_transition.forward_realization(
-            some_normal_rv1.mean, t=0.1, dt=0.1
-        )
-        x2, _ = changed_transition.forward_realization(
-            P.inv() @ some_normal_rv1.mean, t=0.1, dt=0.1
-        )
-        np.testing.assert_allclose(P @ x2.mean, x1.mean)
-        np.testing.assert_allclose(P @ x2.cov @ P.T, x1.cov)
+    #
+    # def test_duplicate_with_changed_coordinates(self, some_normal_rv1, some_normal_rv2):
+    #
+    #     # Inexact transition, so we need a higher-res version
+    #     high_res_transition = self.transition.duplicate(mde_atol=1e-10, mde_rtol=1e-10)
+    #
+    #     P = linops.Scaling(np.arange(3, 3 + len(some_normal_rv1.mean)))
+    #     changed_transition = high_res_transition.duplicate_with_changed_coordinates(
+    #         linop=P
+    #     )
+    #
+    #     # Forward test
+    #     x1, _ = high_res_transition.forward_realization(
+    #         some_normal_rv1.mean, t=0.1, dt=0.1
+    #     )
+    #     x2, _ = changed_transition.forward_realization(
+    #         P.inv() @ some_normal_rv1.mean, t=0.1, dt=0.1
+    #     )
+    #     np.testing.assert_allclose(P @ x2.mean, x1.mean)
+    #     np.testing.assert_allclose(P @ x2.cov @ P.T, x1.cov)
 
 
 @pytest.fixture
