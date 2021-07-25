@@ -5,14 +5,23 @@ from typing import Iterable, Optional, Type, TypeVar
 import numpy as np
 
 from probnum import _randomvariablelist, randvars
-from probnum.randprocs.markov import _markov_process
+from probnum.randprocs.markov import _markov_process, _transition
 from probnum.typing import FloatArgType, ShapeArgType
 
 _InputType = TypeVar("InputType")
 _OutputType = TypeVar("OutputType")
+import dataclasses
 
 
 class MarkovProcessPosterior(_markov_process.MarkovProcess):
+    @dataclasses.dataclass
+    class State:
+        """State of a Markov process posterior."""
+
+        rv: randvars.RandomVariable
+        t: FloatArgType
+        transition: _transition.Transition
+
     def __init__(
         self,
         prior_markov_process,
