@@ -107,22 +107,24 @@ class SDE(_transition.Transition):
     ):
         raise NotImplementedError("Not available.")
 
-    def replace(self, **changes):
+    def duplicate(self, **changes):
         """Create a new object of the same type, replacing fields with values from
         changes."""
 
-        def replace(key):
+        def replace_key(key):
             try:
                 return changes[key]
             except KeyError:
                 return getattr(self, key)
 
-        state_dimension = replace("state_dimension")
-        wiener_process_dimension = replace("wiener_process_dimension")
-        drift_function = replace("drift_function")
-        dispersion_function = replace("dispersion_function")
-        drift_jacobian = replace("drift_jacobian")
-        squared_scalar_diffusion_function = replace("squared_scalar_diffusion_function")
+        state_dimension = replace_key("state_dimension")
+        wiener_process_dimension = replace_key("wiener_process_dimension")
+        drift_function = replace_key("drift_function")
+        dispersion_function = replace_key("dispersion_function")
+        drift_jacobian = replace_key("drift_jacobian")
+        squared_scalar_diffusion_function = replace_key(
+            "squared_scalar_diffusion_function"
+        )
         return SDE(
             state_dimension=state_dimension,
             wiener_process_dimension=wiener_process_dimension,
@@ -529,7 +531,7 @@ class LinearSDE(SDE):
 
         return f, y0
 
-    def replace(self, **changes):
+    def duplicate(self, **changes):
         """Create a new object of the same type, replacing fields with values from
         changes."""
 
@@ -570,30 +572,6 @@ class LinearSDE(SDE):
             mde_solver=mde_solver,
             forward_implementation=forward_implementation,
         )
-
-    #
-    # def replace(self, **changes):
-    #     """Create a new object of the same type, replacing fields with values from changes."""
-    #
-    #     def replace(key):
-    #         try:
-    #             return changes[key]
-    #         except KeyError:
-    #             return getattr(self, key)
-    #     state_dimension = replace("state_dimension")
-    #     wiener_process_dimension = replace("wiener_process_dimension")
-    #     drift_function = replace("drift_function")
-    #     dispersion_function = replace("dispersion_function")
-    #     drift_jacobian = replace("drift_jacobian")
-    #     squared_scalar_diffusion_function = replace("squared_scalar_diffusion_function")
-    #     return SDE(
-    #         state_dimension=state_dimension,
-    #         wiener_process_dimension=wiener_process_dimension,
-    #         drift_function=drift_function,
-    #         dispersion_function=dispersion_function,
-    #         drift_jacobian=drift_jacobian,
-    #         squared_scalar_diffusion_function=squared_scalar_diffusion_function,
-    #     )
 
 
 class LTISDE(LinearSDE):
@@ -742,7 +720,7 @@ class LTISDE(LinearSDE):
             backward_implementation=self.backward_implementation,
         )
 
-    def replace(self, **changes):
+    def duplicate(self, **changes):
         """Create a new object of the same type, replacing fields with values from
         changes."""
 

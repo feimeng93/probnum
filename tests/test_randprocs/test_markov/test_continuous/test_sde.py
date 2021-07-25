@@ -185,7 +185,7 @@ class TestLTISDE(TestLinearSDE):
     def test_discretize_no_force(self):
         """LTISDE.discretize() works if there is zero force (there is an "if" in the
         fct)."""
-        new_trans = self.transition.replace(
+        new_trans = self.transition.duplicate(
             force_vector=0.0 * self.transition.force_vector
         )
 
