@@ -5,4 +5,5 @@ from probnum import randprocs
 
 
 def test_sth():
-    randprocs.markov.MarkovProcessPosterior(output_dim=1, dtype=np.float64)
+    markov_prior = randprocs.markov.integrator.IntegratedWienerProcess(initarg=0.0)
+    randprocs.markov.MarkovProcessPosterior(markov_prior)

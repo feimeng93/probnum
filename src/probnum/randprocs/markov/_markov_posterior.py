@@ -5,22 +5,25 @@ from typing import Iterable, Optional, Type, TypeVar
 import numpy as np
 
 from probnum import _randomvariablelist, randvars
-from probnum.randprocs import _random_process
+from probnum.randprocs.markov import _markov_process
 from probnum.typing import FloatArgType, ShapeArgType
 
 _InputType = TypeVar("InputType")
 _OutputType = TypeVar("OutputType")
 
 
-class MarkovProcessPosterior(_random_process.RandomProcess):
+class MarkovProcessPosterior(_markov_process.MarkovProcess):
     def __init__(
         self,
-        output_dim,
-        dtype,
+        prior_markov_process,
         locations: Optional[Iterable[FloatArgType]] = None,
         states: Optional[Iterable[randvars.RandomVariable]] = None,
     ) -> None:
-        super().__init__(input_dim=1, output_dim=output_dim, dtype=dtype)
+        super().__init__(
+            initarg=prior_markov_process.initarg,
+            initrv=prior_markov_process.initrv,
+            transition=prior_markov_process.transition,
+        )
         self._locations = list(locations) if locations is not None else []
         self._states = list(states) if states is not None else []
         self._frozen = False
