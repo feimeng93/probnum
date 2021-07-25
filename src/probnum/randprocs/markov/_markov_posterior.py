@@ -1,7 +1,5 @@
-"""Time-series posteriors.
+"""Markov process posteriors."""
 
-Interfaces for Markov posteriors, ODE solutions, and the like.
-"""
 from typing import Iterable, Optional, Type, TypeVar
 
 import numpy as np
@@ -14,7 +12,7 @@ _InputType = TypeVar("InputType")
 _OutputType = TypeVar("OutputType")
 
 
-class TimeSeriesPosterior(_random_process.RandomProcess):
+class MarkovProcessPosterior(_random_process.RandomProcess):
     def __init__(
         self,
         output_dim,
