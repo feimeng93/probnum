@@ -134,14 +134,19 @@ class LTISDE(_linear_sde.LinearSDE):
         """
 
         if np.linalg.norm(self.force_vector) > 0:
-            zeros = np.zeros((self.state_dimension, self.state_dimension))
-            eye = np.eye(self.state_dimension)
-            driftmat = np.block([[self.drift_matrix, eye], [zeros, zeros]])
-            dispmat = np.concatenate(
-                (self.dispersion_matrix, np.zeros(self.dispersion_matrix.shape))
+            zeros_dxd = np.zeros((self.state_dimension, self.state_dimension))
+            zeros_dxs = np.zeros(self.dispersion_matrix.shape)
+            eye_dxd = np.eye(self.state_dimension)
+
+            extended_drift_matrix = np.block(
+                [[self.drift_matrix, eye_dxd], [zeros_dxd, zeros_dxd]]
             )
+            extended_dispersion_matrix = np.concatenate(
+                (self.dispersion_matrix, zeros_dxs)
+            )
+
             ah_stack, qh_stack, _ = _utils.matrix_fraction_decomposition(
-                driftmat, dispmat, dt
+                extended_drift_matrix, extended_dispersion_matrix, dt
             )
             proj = np.eye(self.state_dimension, 2 * self.state_dimension)
             proj_rev = np.flip(proj, axis=1)
@@ -154,9 +159,9 @@ class LTISDE(_linear_sde.LinearSDE):
             )
             sh = np.zeros(len(ah))
         return discrete.DiscreteLTIGaussian(
-            ah,
-            sh,
-            qh,
+            state_trans_mat=ah,
+            shift_vec=sh,
+            proc_noise_cov_mat=qh,
             forward_implementation=self.forward_implementation,
             backward_implementation=self.backward_implementation,
         )
