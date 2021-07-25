@@ -1,6 +1,17 @@
 """Linear SDEs."""
 
-from probnum.randprocs.markov.continuous import _sde
+import functools
+from typing import Callable, Optional
+
+import numpy as np
+import scipy.integrate
+import scipy.linalg
+
+from probnum import randvars
+from probnum.randprocs.markov import _transition, discrete
+from probnum.randprocs.markov.continuous import _sde, _utils
+from probnum.typing import FloatArgType, IntArgType
+from probnum.utils.linalg import tril_to_positive_tril
 
 
 class LinearSDE(_sde.SDE):
