@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from probnum import randprocs, randvars
+from probnum import linops, randprocs, randvars
 from tests.test_randprocs.test_markov import test_transition
 from tests.test_randprocs.test_markov.test_continuous import test_linear_sde
 
@@ -68,3 +68,16 @@ class TestLTISDE(test_linear_sde.TestLinearSDE):
             some_normal_rv1.mean, some_normal_rv2, t=0.0, dt=0.1
         )
         assert isinstance(out, randvars.Normal)
+
+    def test_duplicate_with_changed_coordinates(self, some_normal_rv1, some_normal_rv2):
+
+        P = linops.Scaling(np.arange(3, 3 + len(some_normal_rv1.mean)))
+        changed_transition = self.transition.duplicate_with_changed_coordinates(linop=P)
+
+        # Forward test
+        x1, _ = self.transition.forward_realization(some_normal_rv1.mean, t=0.1, dt=0.1)
+        x2, _ = changed_transition.forward_realization(
+            P.inv() @ some_normal_rv1.mean, t=0.1, dt=0.1
+        )
+        np.testing.assert_allclose(P @ x2.mean, x1.mean)
+        np.testing.assert_allclose(P @ x2.cov @ P.T, x1.cov)

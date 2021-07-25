@@ -452,3 +452,19 @@ class LinearSDE(_sde.SDE):
             mde_solver=mde_solver,
             forward_implementation=forward_implementation,
         )
+
+    def duplicate_with_changed_coordinates(self, linop):
+        def new_drift_matrix_function(t, P=linop):
+            return P.inv() @ self.drift_matrix_function(t) @ P
+
+        def new_force_vector_function(t, P=linop):
+            return P.inv() @ self.force_vector_function(t)
+
+        def new_dispersion_matrix_function(t, P=linop):
+            return P.inv() @ self.dispersion_matrix_function(t)
+
+        return self.duplicate(
+            drift_matrix_function=new_drift_matrix_function,
+            force_vector_function=new_force_vector_function,
+            dispersion_matrix_function=new_dispersion_matrix_function,
+        )

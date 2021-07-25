@@ -191,6 +191,9 @@ class DiscreteGaussian(_transition.Transition):
     def _duplicate(self, **changes):
         raise NotImplementedError
 
+    def duplicate_with_changed_coordinates(self, linop):
+        raise NotImplementedError
+
 
 class DiscreteLinearGaussian(DiscreteGaussian):
     """Discrete, linear Gaussian transition models of the form.

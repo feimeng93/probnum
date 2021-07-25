@@ -456,5 +456,5 @@ class Transition(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def coordinate_change(self, linop):
+    def duplicate_with_changed_coordinates(self, linop):
         raise NotImplementedError
