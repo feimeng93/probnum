@@ -25,17 +25,17 @@ class TestSDE(test_transition.InterfaceTestTransition):
 
     # Test access to system matrices
 
-    def test_drift(self, some_normal_rv1):
+    def test_drift_function(self, some_normal_rv1):
         expected = self.g(0.0, some_normal_rv1.mean)
         received = self.transition.drift_function(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
-    def test_dispersion(self, some_normal_rv1):
+    def test_dispersion_function(self, some_normal_rv1):
         expected = self.l(0.0, some_normal_rv1.mean)
         received = self.transition.dispersion_function(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
-    def test_jacobfun(self, some_normal_rv1):
+    def test_drift_jacobian(self, some_normal_rv1):
         expected = self.dg(0.0, some_normal_rv1.mean)
         received = self.transition.drift_jacobian(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
@@ -95,7 +95,7 @@ class TestLinearSDE(TestSDE):
         self.dg = lambda t, x: self.G(t)
         self.l = lambda t, x: spdmat2
 
-    def test_drift_matrixfun(self):
+    def test_drift_matrix_function(self):
         expected = self.G(0.0)
         received = self.transition.drift_matrix_function(0.0)
         np.testing.assert_allclose(expected, received)

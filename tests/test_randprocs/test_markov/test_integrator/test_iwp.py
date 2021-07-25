@@ -77,10 +77,17 @@ class TestIntegratedWienerTransition(
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
+        self.l = lambda t, x: self.L(t)
 
     @property
     def integrator(self):
         return self.transition
+
+    def test_state_dimension(self, test_ndim):
+        assert self.transition.state_dimension == self.some_num_derivatives + 1
+
+    def test_wiener_process_dimension(self, test_ndim):
+        assert self.transition.wiener_process_dimension == 1
 
 
 @pytest.fixture
@@ -143,8 +150,8 @@ class TestIntegratedWienerTransitionValues:
             backward_implementation=backw_impl_string_linear_gauss,
         )
 
-    def test_discretise_values(self, ah_22_ibm, qh_22_ibm, dt):
-        discrete_model = self.transition.discretise(dt=dt)
+    def test_discretize_values(self, ah_22_ibm, qh_22_ibm, dt):
+        discrete_model = self.transition.discretize(dt=dt)
         np.testing.assert_allclose(discrete_model.state_trans_mat, ah_22_ibm)
         np.testing.assert_allclose(discrete_model.proc_noise_cov_mat, qh_22_ibm)
 
@@ -169,7 +176,7 @@ class TestIntegratedWienerTransitionValues:
         np.testing.assert_allclose(diffusion * qh_22_ibm, rv.cov)
 
 
-class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransition):
+class TestIBMLinOps(TestIntegratedWienerTransition):
 
     # Replacement for an __init__ in the pytest language. See:
     # https://stackoverflow.com/questions/21430900/py-test-skips-test-class-if-constructor-is-defined
@@ -196,42 +203,49 @@ class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransitio
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
+        self.l = lambda t, x: self.L(t)
 
     @property
     def integrator(self):
         return self.transition
 
-    def test_dispersionmatrix(self):
+    def test_dispersion_matrix(self):
         expected = self.L(0.0)
         received = self.transition.dispersion_matrix_function(0.0)
         np.testing.assert_allclose(received.todense(), expected.todense())
 
-    def test_jacobfun(self, some_normal_rv1):
+    def test_drift_jacobian(self, some_normal_rv1):
         expected = self.dg(0.0, some_normal_rv1.mean)
-        received = self.transition.jacobfun(0.0, some_normal_rv1.mean)
+        received = self.transition.drift_jacobian(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received.todense(), expected.todense())
 
-    def test_drift_matrixfun(self):
+    def test_drift_matrix_function(self):
         expected = self.G(0.0)
-        received = self.transition.drift_matrixfun(0.0)
+        received = self.transition.drift_matrix_function(0.0)
+
         np.testing.assert_allclose(received.todense(), expected.todense())
 
-    def test_discretise(self):
+    def test_discretize(self):
         with config(lazy_linalg=True):
-            out = self.transition.discretise(dt=0.1)
+            out = self.transition.discretize(dt=0.1)
             assert isinstance(out, randprocs.markov.discrete.DiscreteLTIGaussian)
             assert isinstance(out.state_trans_mat, linops.LinearOperator)
             assert isinstance(out.proc_noise_cov_mat, linops.LinearOperator)
 
-    def test_discretise_no_force(self):
-        """LTISDE.discretise() works if there is zero force (there is an "if" in the
+    def test_discretize_no_force(self):
+        """LTISDE.discretize() works if there is zero force (there is an "if" in the
         fct)."""
         self.transition.force_vector = 0.0 * self.transition.force_vector
         assert (
             np.linalg.norm(self.transition.force_vector_function(0.0)) == 0.0
         )  # side quest/test
         with config(lazy_linalg=True):
-            out = self.transition.discretise(dt=0.1)
+            out = self.transition.discretize(dt=0.1)
             assert isinstance(out, randprocs.markov.discrete.DiscreteLTIGaussian)
             assert isinstance(out.state_trans_mat, linops.LinearOperator)
             assert isinstance(out.proc_noise_cov_mat, linops.LinearOperator)
+
+    def test_dispersion_function(self, some_normal_rv1):
+        expected = self.l(0.0, some_normal_rv1.mean)
+        received = self.transition.dispersion_function(0.0, some_normal_rv1.mean)
+        np.testing.assert_allclose(received.todense(), expected.todense())
