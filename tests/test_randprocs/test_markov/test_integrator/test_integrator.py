@@ -47,7 +47,7 @@ def both_transitions_matern():
         num_derivatives=2, wiener_process_dimension=2, lengthscale=2.041
     )
     matern_as_ltisde = randprocs.markov.continuous.LTISDE(
-        matern2.driftmat, matern2.forcevec, matern2.dispmat
+        matern2.drift_matrix, matern2.force_vector, matern2.dispersion_matrix
     )
     return matern, matern_as_ltisde
 
@@ -60,7 +60,7 @@ def both_transitions_ioup():
         num_derivatives=2, wiener_process_dimension=2, driftspeed=2.041
     )
     ioup_as_ltisde = randprocs.markov.continuous.LTISDE(
-        ioup2.driftmat, ioup2.forcevec, ioup2.dispmat
+        ioup2.drift_matrix, ioup2.force_vector, ioup2.dispersion_matrix
     )
     return ioup, ioup_as_ltisde
 
@@ -73,7 +73,7 @@ def both_transitions_ibm():
         num_derivatives=2, wiener_process_dimension=1
     )
     ibm_as_ltisde = randprocs.markov.continuous.LTISDE(
-        ibm2.driftmat, ibm2.forcevec, ibm2.dispmat
+        ibm2.drift_matrix, ibm2.force_vector, ibm2.dispersion_matrix
     )
     return ibm, ibm_as_ltisde
 

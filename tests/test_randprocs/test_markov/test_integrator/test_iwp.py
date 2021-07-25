@@ -71,9 +71,9 @@ class TestIntegratedWienerTransition(
             backward_implementation=backw_impl_string_linear_gauss,
         )
 
-        self.G = lambda t: self.transition.driftmat
-        self.v = lambda t: self.transition.forcevec
-        self.L = lambda t: self.transition.dispmat
+        self.G = lambda t: self.transition.drift_matrix
+        self.v = lambda t: self.transition.force_vector
+        self.L = lambda t: self.transition.dispersion_matrix
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
@@ -190,9 +190,9 @@ class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransitio
                 backward_implementation=backw_impl_string_linear_gauss,
             )
 
-        self.G = lambda t: self.transition.driftmat
-        self.v = lambda t: self.transition.forcevec
-        self.L = lambda t: self.transition.dispmat
+        self.G = lambda t: self.transition.drift_matrix
+        self.v = lambda t: self.transition.force_vector
+        self.L = lambda t: self.transition.dispersion_matrix
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
@@ -203,7 +203,7 @@ class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransitio
 
     def test_dispersionmatrix(self):
         expected = self.L(0.0)
-        received = self.transition.dispmatfun(0.0)
+        received = self.transition.dispersion_matrix_function(0.0)
         np.testing.assert_allclose(received.todense(), expected.todense())
 
     def test_jacobfun(self, some_normal_rv1):
@@ -211,9 +211,9 @@ class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransitio
         received = self.transition.jacobfun(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received.todense(), expected.todense())
 
-    def test_driftmatfun(self):
+    def test_drift_matrixfun(self):
         expected = self.G(0.0)
-        received = self.transition.driftmatfun(0.0)
+        received = self.transition.drift_matrixfun(0.0)
         np.testing.assert_allclose(received.todense(), expected.todense())
 
     def test_discretise(self):
@@ -226,9 +226,9 @@ class TestIBMLinOps(test_sde.TestLTISDE, test_integrator.TestIntegratorTransitio
     def test_discretise_no_force(self):
         """LTISDE.discretise() works if there is zero force (there is an "if" in the
         fct)."""
-        self.transition.forcevec = 0.0 * self.transition.forcevec
+        self.transition.force_vector = 0.0 * self.transition.force_vector
         assert (
-            np.linalg.norm(self.transition.forcevecfun(0.0)) == 0.0
+            np.linalg.norm(self.transition.force_vector_function(0.0)) == 0.0
         )  # side quest/test
         with config(lazy_linalg=True):
             out = self.transition.discretise(dt=0.1)

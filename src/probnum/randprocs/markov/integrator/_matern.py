@@ -102,8 +102,8 @@ class MaternProcess(_markov_process.MarkovProcess):
                 scale_cholesky = 1e3
             else:
                 scale_cholesky = 1.0
-            zeros = np.zeros(matern_transition.dimension)
-            cov_cholesky = scale_cholesky * np.eye(matern_transition.dimension)
+            zeros = np.zeros(matern_transition.state_dimension)
+            cov_cholesky = scale_cholesky * np.eye(matern_transition.state_dimension)
             initrv = randvars.Normal(
                 mean=zeros, cov=cov_cholesky ** 2, cov_cholesky=cov_cholesky
             )
@@ -119,6 +119,7 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         num_derivatives: int,
         wiener_process_dimension: int,
         lengthscale: float,
+        squared_scalar_diffusion: float = 1.0,
         forward_implementation="classic",
         backward_implementation="classic",
     ):
@@ -132,9 +133,10 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         )
         continuous.LTISDE.__init__(
             self,
-            driftmat=self._driftmat,
-            forcevec=self._forcevec,
-            dispmat=self._dispmat,
+            drift_matrix=self._driftmat,
+            force_vector=self._forcevec,
+            dispersion_matrix=self._dispmat,
+            squared_scalar_diffusion=squared_scalar_diffusion,
             forward_implementation=forward_implementation,
             backward_implementation=backward_implementation,
         )
@@ -178,13 +180,15 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         rv = _utils.apply_precon(self.precon.inverse(dt), rv)
 
         # Apply preconditioning to system matrices
-        self.driftmat = self.precon.inverse(dt) @ self.driftmat @ self.precon(dt)
-        self.forcevec = self.precon.inverse(dt) @ self.forcevec
-        self.dispmat = self.precon.inverse(dt) @ self.dispmat
+        self.drift_matrix = (
+            self.precon.inverse(dt) @ self.drift_matrix @ self.precon(dt)
+        )
+        self.force_vector = self.precon.inverse(dt) @ self.force_vector
+        self.dispersion_matrix = self.precon.inverse(dt) @ self.dispersion_matrix
 
         # Discretise and propagate
-        discretised_model = self.discretise(dt=dt)
-        rv, info = discretised_model.forward_rv(
+        discretized_model = self.discretize(dt=dt)
+        rv, info = discretized_model.forward_rv(
             rv, t, compute_gain=compute_gain, _diffusion=_diffusion
         )
 
@@ -194,9 +198,11 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         if "gain" in info:
             info["gain"] = self.precon(dt) @ info["gain"] @ self.precon.inverse(dt).T
 
-        self.driftmat = self.precon(dt) @ self.driftmat @ self.precon.inverse(dt)
-        self.forcevec = self.precon(dt) @ self.forcevec
-        self.dispmat = self.precon(dt) @ self.dispmat
+        self.drift_matrix = (
+            self.precon(dt) @ self.drift_matrix @ self.precon.inverse(dt)
+        )
+        self.force_vector = self.precon(dt) @ self.force_vector
+        self.dispersion_matrix = self.precon(dt) @ self.dispersion_matrix
 
         return rv, info
 
@@ -231,13 +237,15 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         )
 
         # Apply preconditioning to system matrices
-        self.driftmat = self.precon.inverse(dt) @ self.driftmat @ self.precon(dt)
-        self.forcevec = self.precon.inverse(dt) @ self.forcevec
-        self.dispmat = self.precon.inverse(dt) @ self.dispmat
+        self.drift_matrix = (
+            self.precon.inverse(dt) @ self.drift_matrix @ self.precon(dt)
+        )
+        self.force_vector = self.precon.inverse(dt) @ self.force_vector
+        self.dispersion_matrix = self.precon.inverse(dt) @ self.dispersion_matrix
 
         # Discretise and propagate
-        discretised_model = self.discretise(dt=dt)
-        rv, info = discretised_model.backward_rv(
+        discretized_model = self.discretize(dt=dt)
+        rv, info = discretized_model.backward_rv(
             rv_obtained=rv_obtained,
             rv=rv,
             rv_forwarded=rv_forwarded,
@@ -248,7 +256,39 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
 
         # Undo preconditioning and return
         rv = _utils.apply_precon(self.precon(dt), rv)
-        self.driftmat = self.precon(dt) @ self.driftmat @ self.precon.inverse(dt)
-        self.forcevec = self.precon(dt) @ self.forcevec
-        self.dispmat = self.precon(dt) @ self.dispmat
+        self.drift_matrix = (
+            self.precon(dt) @ self.drift_matrix @ self.precon.inverse(dt)
+        )
+        self.force_vector = self.precon(dt) @ self.force_vector
+        self.dispersion_matrix = self.precon(dt) @ self.dispersion_matrix
         return rv, info
+
+    def duplicate(self, **changes):
+        """Create a new object of the same type, replacing fields with values from
+        changes."""
+
+        def replace_key(key):
+            """If the key is part of the desired changes, change appropriately.
+
+            Otherwise, take the current value.
+            """
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        num_derivatives = replace_key("num_derivatives")
+        wiener_process_dimension = replace_key("wiener_process_dimension")
+        lengthscale = replace_key("lengthscale")
+        squared_scalar_diffusion = replace_key("squared_scalar_diffusion")
+        forward_implementation = replace_key("forward_implementation")
+        backward_implementation = replace_key("backward_implementation")
+
+        return MaternTransition(
+            num_derivatives=num_derivatives,
+            wiener_process_dimension=wiener_process_dimension,
+            lengthscale=lengthscale,
+            squared_scalar_diffusion=squared_scalar_diffusion,
+            forward_implementation=forward_implementation,
+            backward_implementation=backward_implementation,
+        )
