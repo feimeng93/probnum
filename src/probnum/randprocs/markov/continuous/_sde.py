@@ -28,7 +28,7 @@ class SDE(_transition.Transition):
         drift_function: Callable[[FloatArgType, np.ndarray], np.ndarray],
         dispersion_function: Callable[[FloatArgType, np.ndarray], np.ndarray],
         drift_jacobian: Optional[Callable[[FloatArgType, np.ndarray], np.ndarray]],
-        squared_scalar_diffusion: Optional[
+        squared_scalar_diffusion_function: Optional[
             Callable[[FloatArgType], FloatArgType]
         ] = None,
     ):
@@ -44,7 +44,9 @@ class SDE(_transition.Transition):
         def unit_diffusion(t):
             return 1.0
 
-        self.squared_scalar_diffusion = squared_scalar_diffusion or unit_diffusion
+        self.squared_scalar_diffusion_function = (
+            squared_scalar_diffusion_function or unit_diffusion
+        )
         self.drift_jacobian = drift_jacobian
 
     def forward_realization(
@@ -144,7 +146,7 @@ class LinearSDE(SDE):
         drift_matrix_function: Callable[[FloatArgType], np.ndarray],
         force_vector_function: Callable[[FloatArgType], np.ndarray],
         dispersion_matrix_function: Callable[[FloatArgType], np.ndarray],
-        squared_scalar_diffusion: Optional[
+        squared_scalar_diffusion_function: Optional[
             Callable[[FloatArgType], FloatArgType]
         ] = None,
         mde_atol: Optional[FloatArgType] = 1e-6,
@@ -169,7 +171,7 @@ class LinearSDE(SDE):
             drift_function=drift_function,
             drift_jacobian=drift_jacobian,
             dispersion_function=dispersion_function,
-            squared_scalar_diffusion=squared_scalar_diffusion,
+            squared_scalar_diffusion_function=squared_scalar_diffusion_function,
         )
 
         # Choose implementation for forward transitions
@@ -358,7 +360,11 @@ class LinearSDE(SDE):
             u = self.forcevecfun(t)
             L = self.dispmatfun(t)
             new_mean = G @ mean + u
-            new_cov = G @ cov + cov @ G.T + self.squared_scalar_diffusion(t) * L @ L.T
+            new_cov = (
+                G @ cov
+                + cov @ G.T
+                + self.squared_scalar_diffusion_function(t) * L @ L.T
+            )
 
             # Vectorize outcome
             new_cov_flat = new_cov.flatten()
@@ -447,7 +453,7 @@ class LinearSDE(SDE):
                 cov_cholesky, G @ cov_cholesky, lower=True
             )
             L_bar = np.sqrt(
-                self.squared_scalar_diffusion(t)
+                self.squared_scalar_diffusion_function(t)
             ) * scipy.linalg.solve_triangular(cov_cholesky, L, lower=True)
             M = G_bar + G_bar.T + L_bar @ L_bar.T
 
@@ -486,7 +492,7 @@ class LinearSDE(SDE):
             mde_forward_sol_cov_mat = mde_forward_sol_cov(t)
             mde_forward_sol_mean_vec = mde_forward_sol_mean(t)
 
-            LL = self.squared_scalar_diffusion(t) * L @ L.T
+            LL = self.squared_scalar_diffusion_function(t) * L @ L.T
             LL_inv_cov = np.linalg.solve(mde_forward_sol_cov_mat, LL.T).T
 
             new_mean = G @ mean + LL_inv_cov @ (mean - mde_forward_sol_mean_vec) + u
@@ -516,34 +522,59 @@ class LTISDE(LinearSDE):
 
     Parameters
     ----------
-    driftmat :
+    drift_matrix :
         This is F. It is the drift matrix of the SDE.
-    forcevec :
+    force_vector :
         This is U. It is the force vector of the SDE.
-    dispmat :
+    dispersion_matrix :
         This is L. It is the dispersion matrix of the SDE.
     """
 
     def __init__(
         self,
-        driftmat: np.ndarray,
-        forcevec: np.ndarray,
-        dispmat: np.ndarray,
+        drift_matrix: np.ndarray,
+        force_vector: np.ndarray,
+        dispersion_matrix: np.ndarray,
+        squared_scalar_diffusion: FloatArgType,
         forward_implementation="classic",
         backward_implementation="classic",
     ):
-        _check_initial_state_dimensions(driftmat, forcevec, dispmat)
-        dimension = driftmat.shape[0]
-        self.driftmat = driftmat
-        self.forcevec = forcevec
-        self.dispmat = dispmat
+        # Assert all shapes match
+        _check_initial_state_dimensions(drift_matrix, force_vector, dispersion_matrix)
+
+        # Convert input into super() compatible format and initialize super()
+        state_dimension = drift_matrix.shape[0]
+        wiener_process_dimension = dispersion_matrix.shape[1]
+
+        def drift_matrix_function(t):
+            return drift_matrix
+
+        def force_vector_function(t):
+            return force_vector
+
+        def dispersion_matrix_function(t):
+            return dispersion_matrix
+
+        def squared_scalar_diffusion_function(t):
+            return squared_scalar_diffusion
+
         super().__init__(
-            dimension,
-            (lambda t: self.driftmat),
-            (lambda t: self.forcevec),
-            (lambda t: self.dispmat),
+            state_dimension=state_dimension,
+            wiener_process_dimension=wiener_process_dimension,
+            drift_matrix_function=drift_matrix_function,
+            dispersion_matrix_function=dispersion_matrix_function,
+            force_vector_function=force_vector_function,
+            squared_scalar_diffusion_function=squared_scalar_diffusion_function,
+            mde_atol=np.nan,
+            mde_rtol=np.nan,
+            mde_solver=None,
+            forward_implementation=None,
         )
 
+        # Initialize remaining attributes
+        self.drift_matrix = drift_matrix
+        self.force_vector = force_vector
+        self.dispersion_matrix = dispersion_matrix
         self.forward_implementation = forward_implementation
         self.backward_implementation = backward_implementation
 
@@ -553,17 +584,14 @@ class LTISDE(LinearSDE):
         t,
         dt=None,
         compute_gain=False,
-        _diffusion=1.0,
         **kwargs,
     ):
         if dt is None:
             raise ValueError(
                 "Continuous-time transitions require a time-increment ``dt``."
             )
-        discretised_model = self.discretise(dt=dt)
-        return discretised_model.forward_rv(
-            rv, t, compute_gain=compute_gain, _diffusion=_diffusion
-        )
+        discretized_model = self.discretize(dt=dt)
+        return discretized_model.forward_rv(rv, t, compute_gain=compute_gain)
 
     def backward_rv(
         self,
@@ -573,25 +601,23 @@ class LTISDE(LinearSDE):
         gain=None,
         t=None,
         dt=None,
-        _diffusion=1.0,
         **kwargs,
     ):
         if dt is None:
             raise ValueError(
                 "Continuous-time transitions require a time-increment ``dt``."
             )
-        discretised_model = self.discretise(dt=dt)
-        return discretised_model.backward_rv(
+        discretized_model = self.discretize(dt=dt)
+        return discretized_model.backward_rv(
             rv_obtained=rv_obtained,
             rv=rv,
             rv_forwarded=rv_forwarded,
             gain=gain,
             t=t,
-            _diffusion=_diffusion,
         )
 
     @functools.lru_cache(maxsize=None)
-    def discretise(self, dt):
+    def discretize(self, dt):
         """Return a discrete transition model (i.e. mild solution to SDE) using matrix
         fraction decomposition.
 
@@ -630,20 +656,22 @@ class LTISDE(LinearSDE):
         )
 
 
-def _check_initial_state_dimensions(driftmat, forcevec, dispmat):
+def _check_initial_state_dimensions(drift_matrix, force_vector, dispersion_matrix):
     """Checks that the matrices all align and are of proper shape.
 
     Parameters
     ----------
-    driftmat : np.ndarray, shape=(n, n)
-    forcevec : np.ndarray, shape=(n,)
-    dispmat : np.ndarray, shape=(n, s)
+    drift_matrix : np.ndarray, shape=(n, n)
+    force_vector : np.ndarray, shape=(n,)
+    dispersion_matrix : np.ndarray, shape=(n, s)
     """
-    if driftmat.ndim != 2 or driftmat.shape[0] != driftmat.shape[1]:
-        raise ValueError("driftmatrix not of shape (n, n)")
-    if forcevec.ndim != 1:
-        raise ValueError("force not of shape (n,)")
-    if forcevec.shape[0] != driftmat.shape[1]:
-        raise ValueError("force not of shape (n,) or driftmatrix not of shape (n, n)")
-    if dispmat.ndim != 2:
-        raise ValueError("dispersion not of shape (n, s)")
+    if drift_matrix.ndim != 2 or drift_matrix.shape[0] != drift_matrix.shape[1]:
+        raise ValueError("drift_matrix not of shape (n, n)")
+    if force_vector.ndim != 1:
+        raise ValueError("force_vector not of shape (n,)")
+    if force_vector.shape[0] != drift_matrix.shape[1]:
+        raise ValueError(
+            "force_vector not of shape (n,) or drift_matrix not of shape (n, n)"
+        )
+    if dispersion_matrix.ndim != 2:
+        raise ValueError("dispersion_matrix not of shape (n, s)")
