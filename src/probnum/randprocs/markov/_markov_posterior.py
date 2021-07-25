@@ -26,7 +26,7 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
         self,
         prior_markov_process,
         locations: Optional[Iterable[FloatArgType]] = None,
-        states: Optional[Iterable[randvars.RandomVariable]] = None,
+        rvs: Optional[Iterable[randvars.RandomVariable]] = None,
         transitions: Optional[Iterable[_transition.Transition]] = None,
     ) -> None:
         super().__init__(
@@ -35,7 +35,7 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
             transition=prior_markov_process.transition,
         )
         self._locations = list(locations) if locations is not None else []
-        self._states = list(states) if states is not None else []
+        self._rvs = list(rvs) if rvs is not None else []
         self._transitions = list(transitions) if transitions is not None else []
         self._frozen = False
 
@@ -67,7 +67,28 @@ class MarkovProcessPosterior(_markov_process.MarkovProcess):
     ) -> np.ndarray:
         raise NotImplementedError
 
-    def append(self, state):
-        self.locations.append(state.t)
-        self.states.append(state.rv)
-        self.transitions.append(state.transition)
+    def append(self, state: MarkovProcessPosterior.State):
+        self._locations.append(state.t)
+        self._rvs.append(state.rv)
+        self._transitions.append(state.transition)
+
+    def freeze(self) -> None:
+        self._rvs = _randomvariablelist._RandomVariableList(self._rvs)
+        self._locations = np.asarray(self._locations)
+        self._frozen = True
+
+    @property
+    def frozen(self):
+        return self._frozen
+
+    @property
+    def locations(self):
+        return np.asarray(self._locations)
+
+    @property
+    def rvs(self):
+        return _randomvariablelist._RandomVariableList(self._rvs)
+
+    @property
+    def transitions(self):
+        return self._transitions
