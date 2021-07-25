@@ -1,6 +1,7 @@
 """Markov transition rules: continuous and discrete."""
 
 import abc
+import copy
 
 import numpy as np
 
@@ -46,9 +47,15 @@ class Transition(abc.ABC):
         Markov-chains and general discrete-time transitions (likelihoods).
     """
 
-    def __init__(self, input_dim: IntArgType, output_dim: IntArgType):
+    def __init__(self, input_dim: IntArgType, output_dim: IntArgType, _duplicate=None):
         self.input_dim = input_dim
         self.output_dim = output_dim
+
+        # The default is that it is not implemented.
+        def not_implemented(**changes):
+            raise NotImplementedError("duplicate() is not implemented.")
+
+        self._duplicate = _duplicate or not_implemented
 
     def __repr__(self):
         return f"{self.__class__.__name__}(input_dim={self.input_dim}, output_dim={self.output_dim})"
@@ -439,3 +446,6 @@ class Transition(abc.ABC):
     def _forward_realization_via_forward_rv(self, realization, *args, **kwargs):
         real_as_rv = randvars.Constant(support=realization)
         return self.forward_rv(real_as_rv, *args, **kwargs)
+
+    def duplicate(self, **changes):
+        return self._duplicate(**changes)

@@ -72,6 +72,12 @@ class TestSDE(test_transition.InterfaceTestTransition):
     def test_wiener_process_dimension(self, test_ndim):
         assert self.transition.wiener_process_dimension == test_ndim
 
+    def test_duplicate(self):
+        new = self.transition.duplicate()
+        assert type(new) == type(self.transition)
+        print(type(new), type(self.transition))
+        assert False
+
 
 class TestLinearSDE(TestSDE):
 

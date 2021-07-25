@@ -31,8 +31,12 @@ class SDE(_transition.Transition):
         squared_scalar_diffusion_function: Optional[
             Callable[[FloatArgType], FloatArgType]
         ] = None,
+        _duplicate=None,
     ):
-        super().__init__(input_dim=state_dimension, output_dim=state_dimension)
+        _duplicate = _duplicate or self.__duplicate
+        super().__init__(
+            input_dim=state_dimension, output_dim=state_dimension, _duplicate=_duplicate
+        )
 
         # Mandatory arguments
         self.state_dimension = state_dimension
@@ -107,10 +111,7 @@ class SDE(_transition.Transition):
     ):
         raise NotImplementedError("Not available.")
 
-    def duplicate(self, **changes):
-        """Create a new object of the same type, replacing fields with values from
-        changes."""
-
+    def __duplicate(self, **changes):
         def replace_key(key):
             try:
                 return changes[key]
