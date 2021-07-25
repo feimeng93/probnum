@@ -92,7 +92,6 @@ class SDE(_transition.Transition):
             gain=gain,
             t=t,
             dt=dt,
-            _diffusion=_diffusion,
             **kwargs,
         )
 
@@ -190,6 +189,7 @@ class LinearSDE(SDE):
         # Store remaining functions and attributes
         self.drift_matrix_function = drift_matrix_function
         self.force_vector_function = force_vector_function
+        self.dispersion_matrix_function = dispersion_matrix_function
         self.mde_atol = mde_atol
         self.mde_rtol = mde_rtol
         self.mde_solver = mde_solver
@@ -237,10 +237,7 @@ class LinearSDE(SDE):
     def _solve_mde_forward_classic(self, rv, t, dt):
         """Solve forward moment differential equations (MDEs)."""
         dim = rv.mean.shape[0]
-        mde, y0 = self._setup_vectorized_mde_forward_classic(
-            rv,
-            _diffusion=_diffusion,
-        )
+        mde, y0 = self._setup_vectorized_mde_forward_classic(rv)
 
         sol, new_mean, new_cov = self._solve_mde_forward(mde, y0, t, dt, dim)
 
@@ -356,9 +353,9 @@ class LinearSDE(SDE):
             cov = cov_flat.reshape((dim, dim))
 
             # Apply iteration
-            G = self.driftmatfun(t)
-            u = self.forcevecfun(t)
-            L = self.dispmatfun(t)
+            G = self.drift_matrix_function(t)
+            u = self.force_vector_function(t)
+            L = self.dispersion_matrix_function(t)
             new_mean = G @ mean + u
             new_cov = (
                 G @ cov
@@ -444,9 +441,9 @@ class LinearSDE(SDE):
             cov_cholesky = cov_cholesky_flat.reshape((dim, dim))
 
             # Apply iteration
-            G = self.driftmatfun(t)
-            u = self.forcevecfun(t)
-            L = self.dispmatfun(t)
+            G = self.drift_matrix_function(t)
+            u = self.force_vector_function(t)
+            L = self.dispersion_matrix_function(t)
 
             new_mean = G @ mean + u
             G_bar = scipy.linalg.solve_triangular(
@@ -485,9 +482,9 @@ class LinearSDE(SDE):
             cov = cov_flat.reshape((dim, dim))
 
             # Apply iteration
-            G = self.driftmatfun(t)
-            u = self.forcevecfun(t)
-            L = self.dispmatfun(t)
+            G = self.drift_matrix_function(t)
+            u = self.force_vector_function(t)
+            L = self.dispersion_matrix_function(t)
 
             mde_forward_sol_cov_mat = mde_forward_sol_cov(t)
             mde_forward_sol_mean_vec = mde_forward_sol_mean(t)
@@ -535,7 +532,7 @@ class LTISDE(LinearSDE):
         drift_matrix: np.ndarray,
         force_vector: np.ndarray,
         dispersion_matrix: np.ndarray,
-        squared_scalar_diffusion: FloatArgType,
+        squared_scalar_diffusion: Optional[FloatArgType] = 1.0,
         forward_implementation="classic",
         backward_implementation="classic",
     ):
@@ -565,10 +562,6 @@ class LTISDE(LinearSDE):
             dispersion_matrix_function=dispersion_matrix_function,
             force_vector_function=force_vector_function,
             squared_scalar_diffusion_function=squared_scalar_diffusion_function,
-            mde_atol=np.nan,
-            mde_rtol=np.nan,
-            mde_solver=None,
-            forward_implementation=None,
         )
 
         # Initialize remaining attributes
@@ -629,22 +622,24 @@ class LTISDE(LinearSDE):
         which is the transition of the mild solution to the LTI SDE.
         """
 
-        if np.linalg.norm(self.forcevec) > 0:
-            zeros = np.zeros((self.dimension, self.dimension))
-            eye = np.eye(self.dimension)
-            driftmat = np.block([[self.driftmat, eye], [zeros, zeros]])
-            dispmat = np.concatenate((self.dispmat, np.zeros(self.dispmat.shape)))
+        if np.linalg.norm(self.force_vector) > 0:
+            zeros = np.zeros((self.state_dimension, self.state_dimension))
+            eye = np.eye(self.state_dimension)
+            driftmat = np.block([[self.drift_matrix, eye], [zeros, zeros]])
+            dispmat = np.concatenate(
+                (self.dispersion_matrix, np.zeros(self.dispersion_matrix.shape))
+            )
             ah_stack, qh_stack, _ = _utils.matrix_fraction_decomposition(
                 driftmat, dispmat, dt
             )
-            proj = np.eye(self.dimension, 2 * self.dimension)
+            proj = np.eye(self.state_dimension, 2 * self.state_dimension)
             proj_rev = np.flip(proj, axis=1)
             ah = proj @ ah_stack @ proj.T
-            sh = proj @ ah_stack @ proj_rev.T @ self.forcevec
+            sh = proj @ ah_stack @ proj_rev.T @ self.force_vector
             qh = proj @ qh_stack @ proj.T
         else:
             ah, qh, _ = _utils.matrix_fraction_decomposition(
-                self.driftmat, self.dispmat, dt
+                self.drift_matrix, self.dispersion_matrix, dt
             )
             sh = np.zeros(len(ah))
         return discrete.DiscreteLTIGaussian(

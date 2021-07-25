@@ -13,27 +13,31 @@ class TestSDE(test_transition.InterfaceTestTransition):
     def _setup(self, test_ndim, spdmat1):
 
         self.g = lambda t, x: np.sin(x)
-        self.L = lambda t: spdmat1
+        self.l = lambda t, x: spdmat1
         self.dg = lambda t, x: np.cos(x)
         self.transition = randprocs.markov.continuous.SDE(
-            test_ndim, self.g, self.L, self.dg
+            state_dimension=test_ndim,
+            wiener_process_dimension=test_ndim,
+            drift_function=self.g,
+            dispersion_function=self.l,
+            drift_jacobian=self.dg,
         )
 
     # Test access to system matrices
 
     def test_drift(self, some_normal_rv1):
         expected = self.g(0.0, some_normal_rv1.mean)
-        received = self.transition.driftfun(0.0, some_normal_rv1.mean)
+        received = self.transition.drift_function(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
-    def test_dispersionmatrix(self):
-        expected = self.L(0.0)
-        received = self.transition.dispmatfun(0.0)
+    def test_dispersion(self, some_normal_rv1):
+        expected = self.l(0.0, some_normal_rv1.mean)
+        received = self.transition.dispersion_function(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
     def test_jacobfun(self, some_normal_rv1):
         expected = self.dg(0.0, some_normal_rv1.mean)
-        received = self.transition.jacobfun(0.0, some_normal_rv1.mean)
+        received = self.transition.drift_jacobian(0.0, some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
     # Test forward and backward implementations
@@ -62,8 +66,11 @@ class TestSDE(test_transition.InterfaceTestTransition):
     def test_output_dim(self, test_ndim):
         assert self.transition.output_dim == test_ndim
 
-    def test_dimension(self, test_ndim):
-        assert self.transition.dimension == test_ndim
+    def test_state_dimension(self, test_ndim):
+        assert self.transition.state_dimension == test_ndim
+
+    def test_wiener_process_dimension(self, test_ndim):
+        assert self.transition.wiener_process_dimension == test_ndim
 
 
 class TestLinearSDE(TestSDE):
@@ -77,20 +84,25 @@ class TestLinearSDE(TestSDE):
         self.v = lambda t: np.arange(test_ndim)
         self.L = lambda t: spdmat2
         self.transition = randprocs.markov.continuous.LinearSDE(
-            test_ndim, self.G, self.v, self.L
+            state_dimension=test_ndim,
+            wiener_process_dimension=test_ndim,
+            drift_matrix_function=self.G,
+            force_vector_function=self.v,
+            dispersion_matrix_function=self.L,
         )
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
+        self.l = lambda t, x: spdmat2
 
     def test_driftmatfun(self):
         expected = self.G(0.0)
-        received = self.transition.driftmatfun(0.0)
+        received = self.transition.drift_matrix_function(0.0)
         np.testing.assert_allclose(expected, received)
 
     def test_forcevecfun(self):
         expected = self.v(0.0)
-        received = self.transition.forcevecfun(0.0)
+        received = self.transition.force_vector_function(0.0)
         np.testing.assert_allclose(expected, received)
 
     def test_forward_rv(self, some_normal_rv1):
@@ -151,9 +163,9 @@ class TestLTISDE(TestLinearSDE):
         self.L_const = spdmat2
 
         self.transition = randprocs.markov.continuous.LTISDE(
-            self.G_const,
-            self.v_const,
-            self.L_const,
+            drift_matrix=self.G_const,
+            force_vector=self.v_const,
+            dispersion_matrix=self.L_const,
             forward_implementation=forw_impl_string_linear_gauss,
             backward_implementation=backw_impl_string_linear_gauss,
         )
@@ -164,19 +176,20 @@ class TestLTISDE(TestLinearSDE):
 
         self.g = lambda t, x: self.G(t) @ x + self.v(t)
         self.dg = lambda t, x: self.G(t)
+        self.l = lambda t, x: spdmat2
 
-    def test_discretise(self):
-        out = self.transition.discretise(dt=0.1)
+    def test_discretize(self):
+        out = self.transition.discretize(dt=0.1)
         assert isinstance(out, randprocs.markov.discrete.DiscreteLTIGaussian)
 
-    def test_discretise_no_force(self):
-        """LTISDE.discretise() works if there is zero force (there is an "if" in the
+    def test_discretize_no_force(self):
+        """LTISDE.discretize() works if there is zero force (there is an "if" in the
         fct)."""
-        self.transition.forcevec = 0.0 * self.transition.forcevec
+        self.transition.force_vector = 0.0 * self.transition.force_vector
         assert (
-            np.linalg.norm(self.transition.forcevecfun(0.0)) == 0.0
+            np.linalg.norm(self.transition.force_vector_function(0.0)) == 0.0
         )  # side quest/test
-        out = self.transition.discretise(dt=0.1)
+        out = self.transition.discretize(dt=0.1)
         assert isinstance(out, randprocs.markov.discrete.DiscreteLTIGaussian)
 
     def test_backward_rv(self, some_normal_rv1, some_normal_rv2):
@@ -212,10 +225,16 @@ def ltisde_as_linearsde(G_const, v_const, L_const):
     G = lambda t: G_const
     v = lambda t: v_const
     L = lambda t: L_const
-    dim = 2
 
     return randprocs.markov.continuous.LinearSDE(
-        dim, G, v, L, mde_atol=1e-12, mde_rtol=1e-12
+        state_dimension=G_const.shape[0],
+        wiener_process_dimension=L_const.shape[1],
+        drift_matrix_function=G,
+        force_vector_function=v,
+        dispersion_matrix_function=L,
+        mde_atol=1e-12,
+        mde_rtol=1e-12,
+        forward_implementation="classic",
     )
 
 
@@ -224,25 +243,29 @@ def ltisde_as_linearsde_sqrt_forward_implementation(G_const, v_const, L_const):
     G = lambda t: G_const
     v = lambda t: v_const
     L = lambda t: L_const
-    dim = 2
 
     return randprocs.markov.continuous.LinearSDE(
-        dim, G, v, L, mde_atol=1e-12, mde_rtol=1e-12, forward_implementation="sqrt"
+        state_dimension=G_const.shape[0],
+        wiener_process_dimension=L_const.shape[1],
+        drift_matrix_function=G,
+        force_vector_function=v,
+        dispersion_matrix_function=L,
+        mde_atol=1e-12,
+        mde_rtol=1e-12,
+        forward_implementation="sqrt",
     )
 
 
 @pytest.fixture
 def ltisde(G_const, v_const, L_const):
-    return randprocs.markov.continuous.LTISDE(G_const, v_const, L_const)
+    return randprocs.markov.continuous.LTISDE(
+        drift_matrix=G_const, force_vector=v_const, dispersion_matrix=L_const
+    )
 
 
-def test_solve_mde_forward_values(ltisde_as_linearsde, ltisde, v_const, diffusion):
-    out_linear, _ = ltisde_as_linearsde.forward_realization(
-        v_const, t=0.0, dt=0.1, _diffusion=diffusion
-    )
-    out_lti, _ = ltisde.forward_realization(
-        v_const, t=0.0, dt=0.1, _diffusion=diffusion
-    )
+def test_solve_mde_forward_values(ltisde_as_linearsde, ltisde, v_const):
+    out_linear, _ = ltisde_as_linearsde.forward_realization(v_const, t=0.0, dt=0.1)
+    out_lti, _ = ltisde.forward_realization(v_const, t=0.0, dt=0.1)
 
     np.testing.assert_allclose(out_linear.mean, out_lti.mean)
     np.testing.assert_allclose(out_linear.cov, out_lti.cov)
@@ -252,52 +275,41 @@ def test_solve_mde_forward_sqrt_values(
     ltisde_as_linearsde,
     ltisde_as_linearsde_sqrt_forward_implementation,
     v_const,
-    diffusion,
 ):
     """mde forward values in sqrt-implementation and classic implementation should be
     equal."""
-    out_linear, _ = ltisde_as_linearsde.forward_realization(
-        v_const, t=0.0, dt=0.1, _diffusion=diffusion
-    )
+    out_linear, _ = ltisde_as_linearsde.forward_realization(v_const, t=0.0, dt=0.1)
 
-    out_linear_2, _ = ltisde_as_linearsde.forward_rv(
-        out_linear, t=0.1, dt=0.1, _diffusion=diffusion
-    )
+    out_linear_2, _ = ltisde_as_linearsde.forward_rv(out_linear, t=0.1, dt=0.1)
     out_linear_2_sqrt, _ = ltisde_as_linearsde_sqrt_forward_implementation.forward_rv(
-        out_linear, t=0.1, dt=0.1, _diffusion=diffusion
+        out_linear, t=0.1, dt=0.1
     )
 
     np.testing.assert_allclose(out_linear_2_sqrt.mean, out_linear_2.mean)
     np.testing.assert_allclose(out_linear_2_sqrt.cov, out_linear_2.cov)
 
 
-def test_solve_mde_backward_values(ltisde_as_linearsde, ltisde, v_const, diffusion):
+def test_solve_mde_backward_values(ltisde_as_linearsde, ltisde, v_const):
     out_linear_forward, _ = ltisde_as_linearsde.forward_realization(
-        v_const, t=0.0, dt=0.1, _diffusion=diffusion
+        v_const, t=0.0, dt=0.1
     )
-    out_lti_forward, _ = ltisde.forward_realization(
-        v_const, t=0.0, dt=0.1, _diffusion=diffusion
-    )
+    out_lti_forward, _ = ltisde.forward_realization(v_const, t=0.0, dt=0.1)
     out_linear_forward_next, _ = ltisde_as_linearsde.forward_rv(
-        out_linear_forward, t=0.1, dt=0.1, _diffusion=diffusion
+        out_linear_forward, t=0.1, dt=0.1
     )
-    out_lti_forward_next, _ = ltisde.forward_rv(
-        out_lti_forward, t=0.1, dt=0.1, _diffusion=diffusion
-    )
+    out_lti_forward_next, _ = ltisde.forward_rv(out_lti_forward, t=0.1, dt=0.1)
 
     out_linear, _ = ltisde_as_linearsde.backward_realization(
         realization_obtained=out_linear_forward_next.mean,
         rv=out_linear_forward,
         t=0.1,
         dt=0.1,
-        _diffusion=diffusion,
     )
     out_lti, _ = ltisde.backward_realization(
         realization_obtained=out_lti_forward_next.mean,
         rv=out_lti_forward,
         t=0.1,
         dt=0.1,
-        _diffusion=diffusion,
     )
 
     np.testing.assert_allclose(out_linear.mean, out_lti.mean)
