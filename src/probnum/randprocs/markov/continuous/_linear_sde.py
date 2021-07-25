@@ -58,7 +58,6 @@ class LinearSDE(_sde.SDE):
         mde_rtol: Optional[FloatArgType] = 1e-6,
         mde_solver: Optional[str] = "RK45",
         forward_implementation: Optional[str] = "classic",
-        _duplicate=None,
     ):
 
         # Transform functions to be SDE-compatible and initialize super().
@@ -71,7 +70,6 @@ class LinearSDE(_sde.SDE):
         def dispersion_function(t, x):
             return dispersion_matrix_function(t)
 
-        _duplicate = _duplicate or self.__duplicate
         super().__init__(
             state_dimension=state_dimension,
             wiener_process_dimension=wiener_process_dimension,
@@ -79,7 +77,6 @@ class LinearSDE(_sde.SDE):
             drift_jacobian=drift_jacobian,
             dispersion_function=dispersion_function,
             squared_scalar_diffusion_function=squared_scalar_diffusion_function,
-            _duplicate=_duplicate,
         )
 
         # Choose implementation for forward transitions
@@ -414,7 +411,7 @@ class LinearSDE(_sde.SDE):
 
         return f, y0
 
-    def __duplicate(self, **changes):
+    def _duplicate(self, **changes):
         """Create a new object of the same type, replacing fields with values from
         changes."""
 

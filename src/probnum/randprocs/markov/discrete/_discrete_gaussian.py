@@ -188,6 +188,9 @@ class DiscreteGaussian(_transition.Transition):
             proc_noise_cov_cholesky_fun=diff_cholesky,
         )
 
+    def _duplicate(self, **changes):
+        raise NotImplementedError
+
 
 class DiscreteLinearGaussian(DiscreteGaussian):
     """Discrete, linear Gaussian transition models of the form.

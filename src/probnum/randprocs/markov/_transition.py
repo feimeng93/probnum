@@ -47,15 +47,9 @@ class Transition(abc.ABC):
         Markov-chains and general discrete-time transitions (likelihoods).
     """
 
-    def __init__(self, input_dim: IntArgType, output_dim: IntArgType, _duplicate=None):
+    def __init__(self, input_dim: IntArgType, output_dim: IntArgType):
         self.input_dim = input_dim
         self.output_dim = output_dim
-
-        # The default is that it is not implemented.
-        def not_implemented(**changes):
-            raise NotImplementedError("duplicate() is not implemented.")
-
-        self._duplicate = _duplicate or not_implemented
 
     def __repr__(self):
         return f"{self.__class__.__name__}(input_dim={self.input_dim}, output_dim={self.output_dim})"
@@ -448,4 +442,15 @@ class Transition(abc.ABC):
         return self.forward_rv(real_as_rv, *args, **kwargs)
 
     def duplicate(self, **changes):
-        return self._duplicate(**changes)
+        # Wrap duplication into appropriate type checks.
+        duplicated = self._duplicate(**changes)
+
+        # Safeguard against inheritance of the duplication functionality
+        # which is no actual duplication hence we pretend it is not implemented.
+        if type(duplicated) is not type(self):
+            raise NotImplementedError("duplication is not implemented.")
+        return duplicated
+
+    @abc.abstractmethod
+    def _duplicate(self, **changes):
+        raise NotImplementedError

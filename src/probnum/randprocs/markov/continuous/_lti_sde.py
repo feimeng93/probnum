@@ -65,8 +65,6 @@ class LTISDE(_linear_sde.LinearSDE):
         def squared_scalar_diffusion_function(t):
             return squared_scalar_diffusion
 
-        _duplicate = _duplicate or self.__duplicate
-
         super().__init__(
             state_dimension=state_dimension,
             wiener_process_dimension=wiener_process_dimension,
@@ -74,7 +72,6 @@ class LTISDE(_linear_sde.LinearSDE):
             dispersion_matrix_function=dispersion_matrix_function,
             force_vector_function=force_vector_function,
             squared_scalar_diffusion_function=squared_scalar_diffusion_function,
-            _duplicate=_duplicate,
         )
 
         # Initialize remaining attributes
@@ -84,9 +81,6 @@ class LTISDE(_linear_sde.LinearSDE):
         self.squared_scalar_diffusion = squared_scalar_diffusion
         self.forward_implementation = forward_implementation
         self.backward_implementation = backward_implementation
-
-        # Duplication / coordinate change
-        self._duplicate = self.__duplicate
 
     def forward_rv(
         self,
@@ -167,7 +161,7 @@ class LTISDE(_linear_sde.LinearSDE):
             backward_implementation=self.backward_implementation,
         )
 
-    def __duplicate(self, **changes):
+    def _duplicate(self, **changes):
         """Create a new object of the same type, replacing fields with values from
         changes."""
 

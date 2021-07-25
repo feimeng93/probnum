@@ -75,8 +75,6 @@ class TestSDE(test_transition.InterfaceTestTransition):
     def test_duplicate(self):
         new = self.transition.duplicate()
         assert type(new) == type(self.transition)
-        print(type(new), type(self.transition))
-        assert False
 
 
 class TestLinearSDE(TestSDE):

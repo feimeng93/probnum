@@ -263,10 +263,7 @@ class MaternTransition(_integrator.IntegratorTransition, continuous.LTISDE):
         self.dispersion_matrix = self.precon(dt) @ self.dispersion_matrix
         return rv, info
 
-    def duplicate(self, **changes):
-        """Create a new object of the same type, replacing fields with values from
-        changes."""
-
+    def _duplicate(self, **changes):
         def replace_key(key):
             """If the key is part of the desired changes, change appropriately.
 
