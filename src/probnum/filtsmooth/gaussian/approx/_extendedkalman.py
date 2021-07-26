@@ -187,6 +187,26 @@ class ContinuousEKFComponent(EKFComponent, randprocs.markov.continuous.SDE):
             forward_implementation=self.forward_implementation,
         )
 
+    def _duplicate(self, **changes):
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        non_linear_model = replace_key("non_linear_model")
+        forward_implementation = replace_key("forward_implementation")
+        mde_atol = replace_key("mde_atol")
+        mde_rtol = replace_key("mde_rtol")
+        mde_solver = replace_key("mde_solver")
+        return ContinuousEKFComponent(
+            non_linear_model=non_linear_model,
+            mde_atol=mde_atol,
+            mde_rtol=mde_rtol,
+            mde_solver=mde_solver,
+            forward_implementation=forward_implementation,
+        )
+
 
 class DiscreteEKFComponent(EKFComponent, randprocs.markov.discrete.DiscreteGaussian):
     """Discrete extended Kalman filter transition."""
