@@ -34,6 +34,9 @@ class UnscentedTransform:
         self.mweights, self.cweights = _unscented_weights(
             spread, priorpar, self.dimension, self.scale
         )
+        self.spread = spread
+        self.priorpar = priorpar
+        self.special_scale = special_scale
 
     def sigma_points(self, rv):
         """Sigma points.
@@ -87,9 +90,8 @@ class UnscentedTransform:
         """Computes predicted summary statistics, predicted
         mean/kernels/crosscovariance, from (propagated) sigmapoints.
 
-        Not to be confused with mean and kernels resulting from the
-        prediction step of the Bayesian filter. Hence we call it
-        "estimate_*" instead of "predict_*".
+        Not to be confused with mean and kernels resulting from the prediction step of
+        the Bayesian filter. Hence we call it "estimate_*" instead of "predict_*".
         """
         estmean = _estimate_mean(self.mweights, proppts)
         estcovar = _estimate_covar(self.cweights, proppts, estmean, covmat)

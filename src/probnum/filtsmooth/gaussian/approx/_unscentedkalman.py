@@ -267,3 +267,33 @@ class DiscreteUKFComponent(UKFComponent, randprocs.markov.discrete.DiscreteGauss
             ode=ode, prior=prior, evlvar=evlvar
         )
         return cls(discrete_model)
+
+    def _duplicate(self, **changes):
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        non_linear_model = replace_key("non_linear_model")
+        spread = replace_key("spread")
+        priorpar = replace_key("priorpar")
+        special_scale = replace_key("special_scale")
+        return DiscreteUKFComponent(
+            non_linear_model=non_linear_model,
+            spread=spread,
+            priorpar=priorpar,
+            special_scale=special_scale,
+        )
+
+    @property
+    def spread(self):
+        return self.ut.spread
+
+    @property
+    def priorpar(self):
+        return self.ut.priorpar
+
+    @property
+    def special_scale(self):
+        return self.ut.special_scale
