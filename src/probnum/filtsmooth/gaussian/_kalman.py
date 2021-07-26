@@ -139,7 +139,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
             )
 
         # Initialise
-        state = _kalman_posterior.FilteringPosterior.State(
+        state = _kalman_state.KalmanState(
             rv=self.prior_process.initrv,
             t=self.prior_process.initarg,
             transition=self.prior_process.transition,

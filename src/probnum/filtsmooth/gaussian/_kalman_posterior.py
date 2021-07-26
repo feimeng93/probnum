@@ -44,12 +44,6 @@ class KalmanPosterior(_timeseriesposterior.TimeSeriesPosterior, abc.ABC):
         Dynamics model used as a prior for the filter.
     """
 
-    @dataclasses.dataclass
-    class State:
-        rv: randvars.RandomVariable
-        t: FloatArgType
-        transition: GaussMarkovPriorTransitionArgType
-
     def __init__(
         self,
         transitions: Optional[Iterable[GaussMarkovPriorTransitionArgType]] = None,
