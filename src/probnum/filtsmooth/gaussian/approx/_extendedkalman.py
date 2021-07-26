@@ -286,3 +286,19 @@ class DiscreteEKFComponent(EKFComponent, randprocs.markov.discrete.DiscreteGauss
             forward_implementation=forward_implementation,
             backward_implementation=backward_implementation,
         )
+
+    def _duplicate(self, **changes):
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        non_linear_model = replace_key("non_linear_model")
+        forward_implementation = replace_key("forward_implementation")
+        backward_implementation = replace_key("backward_implementation")
+        return DiscreteEKFComponent(
+            non_linear_model=non_linear_model,
+            forward_implementation=forward_implementation,
+            backward_implementation=backward_implementation,
+        )
