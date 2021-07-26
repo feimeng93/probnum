@@ -142,7 +142,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
         state = _kalman_state.KalmanState(
             rv=self.prior_process.initrv,
             t=self.prior_process.initarg,
-            transition=self.prior_process.transition,
+            transition=self.prior_process.transition.duplicate(),
         )
 
         # Iterate over data and measurement models
@@ -163,7 +163,12 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
                 )
                 # predict
                 curr_rv, info_dict["predict_info"] = output
-                state = dataclasses.replace(state, rv=curr_rv, t=state.t + dt)
+
+                state = _kalman_state.KalmanState(
+                    rv=curr_rv,
+                    t=state.t + dt,
+                    transition=state.transition.duplicate(),
+                )
 
             # Update (even if there is no increment)
             linearise_update_at = (
@@ -174,7 +179,11 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
                 rv=state.rv,
                 _linearise_at=linearise_update_at,
             )
-            state = dataclasses.replace(state, rv=curr_rv)
+            state = _kalman_state.KalmanState(
+                rv=curr_rv,
+                t=state.t,
+                transition=state.transition.duplicate(),
+            )
 
             yield state, info_dict
 
