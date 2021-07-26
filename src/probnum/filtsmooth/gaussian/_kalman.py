@@ -8,7 +8,7 @@ import numpy as np
 
 from probnum import problems, randprocs
 from probnum.filtsmooth import _bayesfiltsmooth, _timeseriesposterior, optim
-from probnum.filtsmooth.gaussian import _kalman_posterior, approx
+from probnum.filtsmooth.gaussian import _kalman_posterior, _kalman_state, approx
 
 # Measurement models for a Kalman filter can be all sorts of things:
 KalmanSingleMeasurementModelType = Union[
@@ -32,106 +32,6 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
         or :class:`ContinuousUKFComponent` are also valid. Describes a random process in :math:`K` dimensions.
         If the transition is an integrator, `K=d*(nu+1)` for some d and nu.
     """
-
-    def iterated_filtsmooth(
-        self,
-        regression_problem: problems.TimeSeriesRegressionProblem,
-        init_posterior: Optional[_kalman_posterior.SmoothingPosterior] = None,
-        stopcrit: Optional[optim.StoppingCriterion] = None,
-    ):
-        """Compute an iterated smoothing estimate with repeated posterior linearisation.
-
-        If the extended Kalman filter is used, this yields the IEKS. In
-        any case, the result is an approximation to the maximum-a-
-        posteriori estimate.
-
-        Parameters
-        ----------
-        regression_problem :
-            Regression problem.
-        init_posterior
-            Initial posterior to linearize at. If not specified, linearizes
-            at the prediction random variable.
-        stopcrit: StoppingCriterion
-            A stopping criterion for iterated filtering.
-
-        Returns
-        -------
-        SmoothingPosterior
-
-        See Also
-        --------
-        TimeSeriesRegressionProblem: a regression problem data class
-        """
-
-        smoothing_post = init_posterior
-        info_dicts = None
-        for smoothing_post, info_dicts in self.iterated_filtsmooth_posterior_generator(
-            regression_problem, init_posterior, stopcrit
-        ):
-            pass
-
-        return smoothing_post, info_dicts
-
-    def iterated_filtsmooth_posterior_generator(
-        self,
-        regression_problem: problems.TimeSeriesRegressionProblem,
-        init_posterior: Optional[_kalman_posterior.SmoothingPosterior] = None,
-        stopcrit: Optional[optim.StoppingCriterion] = None,
-    ):
-        """Compute iterated smoothing estimates with repeated posterior linearisation.
-
-        If the extended Kalman filter is used, this yields the IEKS. In
-        any case, the result is an approximation to the maximum-a-
-        posteriori estimate.
-
-        Parameters
-        ----------
-        regression_problem :
-            Regression problem.
-        init_posterior
-            Initial posterior to linearize at. Defaults to computing a (non-iterated)
-            smoothing posterior, which amounts to linearizing at the prediction
-            random variable.
-        stopcrit: StoppingCriterion
-            A stopping criterion for iterated filtering.
-
-        Yields
-        ------
-        SmoothingPosterior
-        info_dicts
-            list of dictionaries containing filtering information
-
-        See Also
-        --------
-        TimeSeriesRegressionProblem: a regression problem data class
-        """
-
-        if stopcrit is None:
-            stopcrit = optim.StoppingCriterion()
-
-        if init_posterior is None:
-            # Initialise iterated smoother
-            new_posterior, info_dicts = self.filtsmooth(
-                regression_problem,
-                _previous_posterior=None,
-            )
-        else:
-            new_posterior = init_posterior
-            info_dicts = []
-
-        yield new_posterior, info_dicts
-        new_mean = new_posterior.states.mean
-        old_mean = np.inf * np.ones(new_mean.shape)
-        while not stopcrit.terminate(error=new_mean - old_mean, reference=new_mean):
-            old_posterior = new_posterior
-            new_posterior, info_dicts = self.filtsmooth(
-                regression_problem,
-                _previous_posterior=old_posterior,
-            )
-            yield new_posterior, info_dicts
-            new_mean = new_posterior.states.mean
-            old_mean = old_posterior.states.mean
 
     def filtsmooth(
         self,
