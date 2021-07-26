@@ -23,7 +23,7 @@ class GaussNewton(_state_space_optimizer.StateSpaceOptimizer):
         info_dicts = []
         yield new_posterior, info_dicts
 
-        new_mean = new_posterior.states.mean
+        new_mean = new_posterior.rvs.mean
         old_mean = np.inf * np.ones(new_mean.shape)
         mean_difference = new_mean - old_mean
 
@@ -36,6 +36,6 @@ class GaussNewton(_state_space_optimizer.StateSpaceOptimizer):
                 regression_problem, _previous_posterior=old_posterior
             )
             yield new_posterior, info_dicts
-            new_mean = new_posterior.states.mean
-            old_mean = old_posterior.states.mean
+            new_mean = new_posterior.rvs.mean
+            old_mean = old_posterior.rvs.mean
             mean_difference = new_mean - old_mean

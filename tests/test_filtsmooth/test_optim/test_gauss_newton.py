@@ -35,9 +35,9 @@ def test_rmse_filt_smooth(setup):
         regression_problem, initial_guess=posterior
     )
 
-    filtms = posterior.filtering_posterior.states.mean
-    smooms = posterior.states.mean
-    iterms = iterated_posterior.states.mean
+    filtms = posterior.filtering_posterior.rvs.mean
+    smooms = posterior.rvs.mean
+    iterms = iterated_posterior.rvs.mean
 
     if filtms.ndim == 1:
         filtms = filtms.reshape((-1, 1))

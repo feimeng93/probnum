@@ -294,7 +294,7 @@ class DiscreteEKFComponent(EKFComponent, randprocs.markov.discrete.DiscreteGauss
         else:
             raise TypeError("ek0_or_ek1 must be 0 or 1, resp.")
         discrete_model = randprocs.markov.discrete.DiscreteGaussian(
-            input_dim=prior.dimension,
+            input_dim=prior.state_dimension,
             output_dim=ode.dimension,
             state_trans_fun=dyna,
             proc_noise_cov_mat_fun=diff,
