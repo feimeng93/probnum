@@ -6,7 +6,6 @@ solvers.
 """
 
 from . import continuous, discrete, integrator, utils
-from ._markov_posterior import MarkovProcessPosterior
 from ._markov_process import MarkovProcess
 from ._transition import Transition
 
