@@ -99,12 +99,12 @@ def car_tracking(
     dynamics_model = randprocs.markov.integrator.IntegratedWienerTransition(
         num_derivatives=num_prior_derivatives,
         wiener_process_dimension=state_dim,
+        squared_scalar_diffusion=process_diffusion ** 2,
         forward_implementation=forward_implementation,
         backward_implementation=backward_implementation,
     )
-    dynamics_model.dispmat *= process_diffusion
 
-    discrete_dynamics_model = dynamics_model.discretise(dt=step)
+    discrete_dynamics_model = dynamics_model.discretize(dt=step)
 
     measurement_matrix = np.eye(measurement_dim, model_dim)
     measurement_cov = measurement_variance * np.eye(measurement_dim)

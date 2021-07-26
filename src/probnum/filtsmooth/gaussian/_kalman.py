@@ -1,6 +1,7 @@
 """Gaussian filtering and smoothing."""
 
 
+import dataclasses
 from typing import Iterable, Optional, Union
 
 import numpy as np
@@ -193,15 +194,13 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
         TimeSeriesRegressionProblem: a regression problem data class
         """
 
-        posterior = _kalmanposterior.FilteringPosterior(
-            transition=self.prior_process.transition
-        )
+        posterior = _kalmanposterior.FilteringPosterior()
         info_dicts = []
 
-        for t, rv, info in self.filtered_states_generator(
+        for state, info in self.filtered_states_generator(
             regression_problem, _previous_posterior
         ):
-            posterior.append(location=t, state=rv)
+            posterior.append(state=state)
             info_dicts.append(info)
 
         return posterior, info_dicts
@@ -240,35 +239,44 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
             )
 
         # Initialise
-        t_old = self.prior_process.initarg
-        curr_rv = self.prior_process.initrv
+        state = _kalmanposterior.FilteringPosterior.State(
+            rv=self.prior_process.initrv,
+            t=self.prior_process.initarg,
+            transition=self.prior_process.transition,
+        )
 
         # Iterate over data and measurement models
         for t, data, measmod in regression_problem:
 
-            dt = t - t_old
+            dt = t - state.t
             info_dict = {}
 
             # Predict if there is a time-increment
             if dt > 0:
                 linearise_predict_at = (
-                    None if _previous_posterior is None else _previous_posterior(t_old)
+                    None
+                    if _previous_posterior is None
+                    else _previous_posterior(state.t)
                 )
                 output = self.prior_process.transition.forward_rv(
-                    curr_rv, t, dt=dt, _linearise_at=linearise_predict_at
+                    state.rv, state.t, dt=dt, _linearise_at=linearise_predict_at
                 )
+                # predict
                 curr_rv, info_dict["predict_info"] = output
+                state = dataclasses.replace(state, rv=curr_rv, t=state.t + dt)
 
             # Update (even if there is no increment)
             linearise_update_at = (
-                None if _previous_posterior is None else _previous_posterior(t)
+                None if _previous_posterior is None else _previous_posterior(state.t)
             )
             curr_rv, info_dict["update_info"] = measmod.backward_realization(
-                realization_obtained=data, rv=curr_rv, _linearise_at=linearise_update_at
+                realization_obtained=data,
+                rv=state.rv,
+                _linearise_at=linearise_update_at,
             )
+            state = dataclasses.replace(state, rv=curr_rv)
 
-            yield t, curr_rv, info_dict
-            t_old = t
+            yield state, info_dict
 
     def smooth(self, filter_posterior, _previous_posterior=None):
         """Apply Gaussian smoothing to the filtering outcome (i.e. a KalmanPosterior).
@@ -283,16 +291,15 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
         KalmanPosterior
             Posterior distribution of the smoothed output
         """
-        diffusion_list = np.ones_like(filter_posterior.locations[1:])
-        rv_list = self.prior_process.transition.smooth_list(
-            filter_posterior.states,
-            filter_posterior.locations,
-            _diffusion_list=diffusion_list,
+        rv_list = randprocs.markov.smooth_list(
+            rv_list=filter_posterior.rvs,
+            locations=filter_posterior.locations,
+            transition_list=filter_posterior.transitions,
         )
 
         return _kalmanposterior.SmoothingPosterior(
             filtering_posterior=filter_posterior,
-            transition=self.prior_process.transition,
+            transitions=filter_posterior.transitions,
             locations=filter_posterior.locations,
-            states=rv_list,
+            rvs=rv_list,
         )

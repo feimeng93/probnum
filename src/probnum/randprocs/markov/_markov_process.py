@@ -7,7 +7,7 @@ import scipy.stats
 
 from probnum import randvars, utils
 from probnum.randprocs import _random_process
-from probnum.randprocs.markov import _transition
+from probnum.randprocs.markov import _transition, _transition_utils
 from probnum.typing import ShapeArgType
 
 _InputType = Union[np.floating, np.ndarray]
@@ -83,21 +83,21 @@ class MarkovProcess(_random_process.RandomProcess):
 
         if size == ():
             return np.array(
-                self.transition.jointly_transform_base_measure_realization_list_forward(
+                _transition_utils.jointly_transform_base_measure_realization_list_forward(
                     base_measure_realizations=base_measure_realizations,
                     t=args,
                     initrv=self.initrv,
-                    _diffusion_list=np.ones_like(args[:-1]),
+                    transition_list=[self.transition] * len(args),
                 )
             )
 
         return np.stack(
             [
-                self.transition.jointly_transform_base_measure_realization_list_forward(
+                _transition_utils.jointly_transform_base_measure_realization_list_forward(
                     base_measure_realizations=base_real,
                     t=args,
                     initrv=self.initrv,
-                    _diffusion_list=np.ones_like(args[:-1]),
+                    transition_list=[self.transition] * len(args),
                 )
                 for base_real in base_measure_realizations
             ]

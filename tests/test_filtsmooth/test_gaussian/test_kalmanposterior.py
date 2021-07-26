@@ -35,39 +35,44 @@ def test_len(posterior):
     """__len__ performs as expected."""
     assert len(posterior) > 0
     assert len(posterior.locations) == len(posterior)
-    assert len(posterior.states) == len(posterior)
+    assert len(posterior.rvs) == len(posterior)
 
 
 def test_append(posterior):
     with pytest.raises(ValueError):
         non_sorted_location = posterior.locations[0] - 1.0
-        posterior.append(non_sorted_location, posterior.states[0])
+        state = filtsmooth.gaussian.KalmanPosterior.State(
+            rv=posterior.rvs[0],
+            t=non_sorted_location,
+            transition=posterior.transitions[0],
+        )
+        posterior.append(state)
 
     # Copy posterior such that random appends to the posterior object do not influence
     # later tests
     copied_posterior = filtsmooth.gaussian.SmoothingPosterior(
         filtering_posterior=posterior.filtering_posterior,
-        transition=posterior.transition,
+        transitions=posterior.transitions,
         locations=posterior.locations.copy(),
-        states=posterior.states.copy(),
-        diffusion_model=posterior.diffusion_model,
+        rvs=posterior.rvs.copy(),
     )
 
     len_before_append = len(copied_posterior)
     sorted_location = copied_posterior.locations[-1] + 1.0
-    last_state = copied_posterior.states[-1]
-    copied_posterior.append(sorted_location, last_state)
+    last_rv = copied_posterior.rvs[-1]
+    state = filtsmooth.gaussian.KalmanPosterior.State(
+        rv=last_rv, t=sorted_location, transition=copied_posterior.transitions[-1]
+    )
+
+    copied_posterior.append(state)
     assert len(copied_posterior) == len_before_append + 1
     assert copied_posterior.locations[-1] == sorted_location
-    assert copied_posterior.states[-1] == last_state
+    assert copied_posterior.rvs[-1] == last_rv
 
     copied_posterior.freeze()
 
-    sorted_location = copied_posterior.locations[-1] + 1.0
-    last_state = copied_posterior.states[-1]
-
     with pytest.raises(ValueError):
-        copied_posterior.append(sorted_location, last_state)
+        copied_posterior.append(state)
 
 
 def test_locations(posterior, setup):
@@ -81,21 +86,21 @@ def test_locations(posterior, setup):
 def test_getitem(posterior):
     """Getitem performs as expected."""
 
-    np.testing.assert_allclose(posterior[0].mean, posterior.states[0].mean)
-    np.testing.assert_allclose(posterior[0].cov, posterior.states[0].cov)
+    np.testing.assert_allclose(posterior[0].mean, posterior.rvs[0].mean)
+    np.testing.assert_allclose(posterior[0].cov, posterior.rvs[0].cov)
 
-    np.testing.assert_allclose(posterior[-1].mean, posterior.states[-1].mean)
-    np.testing.assert_allclose(posterior[-1].cov, posterior.states[-1].cov)
+    np.testing.assert_allclose(posterior[-1].mean, posterior.rvs[-1].mean)
+    np.testing.assert_allclose(posterior[-1].cov, posterior.rvs[-1].cov)
 
-    np.testing.assert_allclose(posterior[:].mean, posterior.states[:].mean)
-    np.testing.assert_allclose(posterior[:].cov, posterior.states[:].cov)
+    np.testing.assert_allclose(posterior[:].mean, posterior.rvs[:].mean)
+    np.testing.assert_allclose(posterior[:].cov, posterior.rvs[:].cov)
 
 
 def test_states(posterior):
     """RVs are stored correctly."""
 
-    assert isinstance(posterior.states, _RandomVariableList)
-    assert len(posterior.states[0].shape) == 1
+    assert isinstance(posterior.rvs, _RandomVariableList)
+    assert len(posterior.rvs[0].shape) == 1
 
 
 def test_call_error_if_small(posterior):
@@ -162,12 +167,10 @@ def test_sampling_shapes(posterior, locs, size, rng):
     if isinstance(size, int):
         size = (size,)
     if locs is None:
-        expected_size = (
-            size + posterior.states.shape
-        )  # (*size, *posterior.states.shape)
+        expected_size = size + posterior.rvs.shape  # (*size, *posterior.rvs.shape)
     else:
         expected_size = (
-            size + locs.shape + posterior.states[0].shape
+            size + locs.shape + posterior.rvs[0].shape
         )  # (*size, *posterior(locs).mean.shape)
 
     assert samples.shape == expected_size

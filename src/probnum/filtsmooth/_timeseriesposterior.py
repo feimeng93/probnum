@@ -1,6 +1,7 @@
 """Abstract Base Class for posteriors over states after applying filtering/smoothing."""
 
 import abc
+import dataclasses
 from typing import Iterable, Optional, Union
 
 import numpy as np
@@ -33,13 +34,18 @@ class TimeSeriesPosterior(abc.ABC):
         Posterior random variables.
     """
 
+    @dataclasses.dataclass
+    class State:
+        rv: randvars.RandomVariable
+        t: FloatArgType
+
     def __init__(
         self,
         locations: Optional[Iterable[FloatArgType]] = None,
-        states: Optional[Iterable[randvars.RandomVariable]] = None,
+        rvs: Optional[Iterable[randvars.RandomVariable]] = None,
     ) -> None:
         self._locations = list(locations) if locations is not None else []
-        self._states = list(states) if states is not None else []
+        self._rvs = list(rvs) if rvs is not None else []
         self._frozen = False
 
     def _check_location(self, location: FloatArgType) -> FloatArgType:
@@ -51,15 +57,14 @@ class TimeSeriesPosterior(abc.ABC):
 
     def append(
         self,
-        location: FloatArgType,
-        state: randvars.RandomVariable,
+        state: "TimeSeriesPosterior.State",
     ) -> None:
 
         if self.frozen:
             raise ValueError("Cannot append to frozen TimeSeriesPosterior object.")
 
-        self._locations.append(self._check_location(location))
-        self._states.append(state)
+        self._locations.append(self._check_location(state.t))
+        self._rvs.append(state.rv)
 
     def freeze(self) -> None:
         self._frozen = True
@@ -73,8 +78,8 @@ class TimeSeriesPosterior(abc.ABC):
         return np.asarray(self._locations)
 
     @property
-    def states(self):
-        return _randomvariablelist._RandomVariableList(self._states)
+    def rvs(self):
+        return _randomvariablelist._RandomVariableList(self._rvs)
 
     def __len__(self) -> int:
         """Length of the discrete-time solution.
@@ -84,7 +89,7 @@ class TimeSeriesPosterior(abc.ABC):
         return len(self.locations)
 
     def __getitem__(self, idx: ArrayLikeGetitemArgType) -> randvars.RandomVariable:
-        return self.states[idx]
+        return self.rvs[idx]
 
     def __call__(self, t: DenseOutputLocationArgType) -> DenseOutputValueType:
         """Evaluate the time-continuous posterior at location `t`
