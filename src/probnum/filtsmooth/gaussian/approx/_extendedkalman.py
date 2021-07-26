@@ -143,10 +143,11 @@ class ContinuousEKFComponent(EKFComponent, randprocs.markov.continuous.SDE):
 
         randprocs.markov.continuous.SDE.__init__(
             self,
-            driftfun=non_linear_model.driftfun,
-            dispmatfun=non_linear_model.dispmatfun,
-            jacobfun=non_linear_model.jacobfun,
-            dimension=non_linear_model.dimension,
+            state_dimension=non_linear_model.state_dimension,
+            wiener_process_dimension=non_linear_model.wiener_process_dimension,
+            drift_function=non_linear_model.drift_function,
+            dispersion_function=non_linear_model.dispersion_function,
+            drift_jacobian=non_linear_model.drift_jacobian,
         )
         EKFComponent.__init__(self, non_linear_model=non_linear_model)
 
@@ -159,8 +160,9 @@ class ContinuousEKFComponent(EKFComponent, randprocs.markov.continuous.SDE):
     def linearize(self, at_this_rv: randvars.Normal):
         """Linearize the drift function with a first order Taylor expansion."""
 
-        g = self.non_linear_model.driftfun
-        dg = self.non_linear_model.jacobfun
+        g = self.non_linear_model.drift_function
+        dg = self.non_linear_model.drift_jacobian
+        l = self.non_linear_model.dispersion_function
 
         x0 = at_this_rv.mean
 
@@ -170,11 +172,15 @@ class ContinuousEKFComponent(EKFComponent, randprocs.markov.continuous.SDE):
         def driftmatfun(t):
             return dg(t, x0)
 
+        def dispmatfun(t):
+            return l(t, x0)
+
         return randprocs.markov.continuous.LinearSDE(
-            dimension=self.non_linear_model.dimension,
-            driftmatfun=driftmatfun,
-            forcevecfun=forcevecfun,
-            dispmatfun=self.non_linear_model.dispmatfun,
+            state_dimension=self.non_linear_model.state_dimension,
+            wiener_process_dimension=self.non_linear_model.wiener_process_dimension,
+            drift_matrix_function=driftmatfun,
+            force_vector_function=forcevecfun,
+            dispersion_matrix_function=dispmatfun,
             mde_atol=self.mde_atol,
             mde_rtol=self.mde_rtol,
             mde_solver=self.mde_solver,

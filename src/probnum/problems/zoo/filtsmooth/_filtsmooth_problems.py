@@ -215,10 +215,10 @@ def ornstein_uhlenbeck(
         num_derivatives=0,
         wiener_process_dimension=1,
         driftspeed=driftspeed,
+        squared_scalar_diffusion=process_diffusion ** 2,
         forward_implementation=forward_implementation,
         backward_implementation=backward_implementation,
     )
-    dynamics_model.dispmat *= process_diffusion
 
     measurement_model = randprocs.markov.discrete.DiscreteLTIGaussian(
         state_trans_mat=np.eye(1),
@@ -456,14 +456,18 @@ def benes_daum(
     def df(t, x):
         return 1.0 - np.tanh(x) ** 2
 
-    def l(t):
+    def l(t, x):
         return process_diffusion * np.ones((1, 1))
 
     if initrv is None:
         initrv = randvars.Normal(np.zeros(1), 3.0 * np.eye(1))
 
     dynamics_model = randprocs.markov.continuous.SDE(
-        dimension=1, driftfun=f, dispmatfun=l, jacobfun=df
+        state_dimension=1,
+        wiener_process_dimension=1,
+        drift_function=f,
+        dispersion_function=l,
+        drift_jacobian=df,
     )
     measurement_model = randprocs.markov.discrete.DiscreteLTIGaussian(
         state_trans_mat=np.eye(1),

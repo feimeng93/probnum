@@ -89,8 +89,8 @@ class InterfaceDiscreteLinearizationTest:
 
         # Compute filter/smoother solution
         posterior, _ = method.filtsmooth(regression_problem)
-        filtms = posterior.filtering_posterior.states.mean
-        smooms = posterior.states.mean
+        filtms = posterior.filtering_posterior.rvs.mean
+        smooms = posterior.rvs.mean
 
         # Compute RMSEs and assert they are well-behaved.
         comp = regression_problem.solution[:, 0]
@@ -154,8 +154,8 @@ class InterfaceContinuousLinearizationTest:
         # Compute filter/smoother solution
         posterior, _ = method.filter(regression_problem)
         posterior = method.smooth(posterior)
-        filtms = posterior.filtering_posterior.states.mean
-        smooms = posterior.states.mean
+        filtms = posterior.filtering_posterior.rvs.mean
+        smooms = posterior.rvs.mean
 
         # Compute RMSEs and assert they are well-behaved.
         comp = regression_problem.solution[:, 0]

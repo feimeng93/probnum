@@ -26,8 +26,8 @@ def test_rmse_filt_smooth(setup):
 
     posterior, _ = kalman.filtsmooth(regression_problem)
 
-    filtms = posterior.filtering_posterior.states.mean
-    smooms = posterior.states.mean
+    filtms = posterior.filtering_posterior.rvs.mean
+    smooms = posterior.rvs.mean
 
     filtms_rmse = np.mean(np.abs(filtms[:, :2] - truth[:, :2]))
     smooms_rmse = np.mean(np.abs(smooms[:, :2] - truth[:, :2]))
@@ -69,8 +69,8 @@ def test_kalman_smoother_high_order_ibm(rng):
 
     posterior, _ = kalman.filtsmooth(regression_problem)
 
-    filtms = posterior.filtering_posterior.states.mean
-    smooms = posterior.states.mean
+    filtms = posterior.filtering_posterior.rvs.mean
+    smooms = posterior.rvs.mean
 
     filtms_rmse = np.mean(np.abs(filtms[:, :2] - truth[:, :2]))
     smooms_rmse = np.mean(np.abs(smooms[:, :2] - truth[:, :2]))
@@ -93,8 +93,8 @@ def test_kalman_multiple_measurement_models(rng):
 
     posterior, _ = kalman.filtsmooth(regression_problem)
 
-    filtms = posterior.filtering_posterior.states.mean
-    smooms = posterior.states.mean
+    filtms = posterior.filtering_posterior.rvs.mean
+    smooms = posterior.rvs.mean
 
     filtms_rmse = np.mean(np.abs(filtms[:, :2] - truth[:, :2]))
     smooms_rmse = np.mean(np.abs(smooms[:, :2] - truth[:, :2]))
