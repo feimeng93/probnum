@@ -189,7 +189,26 @@ class DiscreteGaussian(_transition.Transition):
         )
 
     def _duplicate(self, **changes):
-        raise NotImplementedError
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        input_dim = replace_key("input_dim")
+        output_dim = replace_key("output_dim")
+        state_trans_fun = replace_key("state_trans_fun")
+        proc_noise_cov_mat_fun = replace_key("proc_noise_cov_mat_fun")
+        jacob_state_trans_fun = replace_key("jacob_state_trans_fun")
+        proc_noise_cov_cholesky_fun = replace_key("proc_noise_cov_cholesky_fun")
+        return DiscreteGaussian(
+            input_dim=input_dim,
+            output_dim=output_dim,
+            state_trans_fun=state_trans_fun,
+            proc_noise_cov_mat_fun=proc_noise_cov_mat_fun,
+            jacob_state_trans_fun=jacob_state_trans_fun,
+            proc_noise_cov_cholesky_fun=proc_noise_cov_cholesky_fun,
+        )
 
     def duplicate_with_changed_coordinates(self, linop):
         raise NotImplementedError
@@ -252,6 +271,8 @@ class DiscreteLinearGaussian(DiscreteGaussian):
 
         self.state_trans_mat_fun = state_trans_mat_fun
         self.shift_vec_fun = shift_vec_fun
+        self._forward_implementation_string = forward_implementation
+        self._backward_implementation_string = backward_implementation
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
@@ -497,6 +518,40 @@ class DiscreteLinearGaussian(DiscreteGaussian):
         info = {"rv_forwarded": rv_forwarded}
         return randvars.Normal(new_mean, new_cov), info
 
+    def _duplicate(self, **changes):
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        input_dim = replace_key("input_dim")
+        output_dim = replace_key("output_dim")
+        state_trans_mat_fun = replace_key("state_trans_mat_fun")
+        shift_vec_fun = replace_key("shift_vec_fun")
+        proc_noise_cov_mat_fun = replace_key("proc_noise_cov_mat_fun")
+        proc_noise_cov_cholesky_fun = replace_key("proc_noise_cov_cholesky_fun")
+        forward_implementation = replace_key("forward_implementation")
+        backward_implementation = replace_key("backward_implementation")
+        return DiscreteLinearGaussian(
+            input_dim=input_dim,
+            output_dim=output_dim,
+            state_trans_mat_fun=state_trans_mat_fun,
+            shift_vec_fun=shift_vec_fun,
+            proc_noise_cov_mat_fun=proc_noise_cov_mat_fun,
+            proc_noise_cov_cholesky_fun=proc_noise_cov_cholesky_fun,
+            forward_implementation=forward_implementation,
+            backward_implementation=backward_implementation,
+        )
+
+    @property
+    def forward_implementation(self):
+        return self._forward_implementation_string
+
+    @property
+    def backward_implementation(self):
+        return self._backward_implementation_string
+
 
 class DiscreteLTIGaussian(DiscreteLinearGaussian):
     """Discrete, linear, time-invariant Gaussian transition models of the form.
@@ -562,6 +617,28 @@ class DiscreteLTIGaussian(DiscreteLinearGaussian):
         if self._proc_noise_cov_cholesky is not None:
             return self._proc_noise_cov_cholesky
         return np.linalg.cholesky(self.proc_noise_cov_mat)
+
+    def _duplicate(self, **changes):
+        def replace_key(key):
+            try:
+                return changes[key]
+            except KeyError:
+                return getattr(self, key)
+
+        state_trans_mat = replace_key("state_trans_mat")
+        shift_vec = replace_key("shift_vec")
+        proc_noise_cov_mat = replace_key("proc_noise_cov_mat")
+        proc_noise_cov_cholesky = replace_key("proc_noise_cov_cholesky")
+        forward_implementation = replace_key("forward_implementation")
+        backward_implementation = replace_key("backward_implementation")
+        return DiscreteLTIGaussian(
+            state_trans_mat=state_trans_mat,
+            shift_vec=shift_vec,
+            proc_noise_cov_mat=proc_noise_cov_mat,
+            proc_noise_cov_cholesky=proc_noise_cov_cholesky,
+            forward_implementation=forward_implementation,
+            backward_implementation=backward_implementation,
+        )
 
 
 def _check_dimensions(state_trans_mat, shift_vec, proc_noise_cov_mat):

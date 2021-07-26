@@ -41,7 +41,7 @@ def test_len(posterior):
 def test_append(posterior):
     with pytest.raises(ValueError):
         non_sorted_location = posterior.locations[0] - 1.0
-        state = filtsmooth.gaussian.KalmanPosterior.State(
+        state = filtsmooth.gaussian.KalmanState(
             rv=posterior.rvs[0],
             t=non_sorted_location,
             transition=posterior.transitions[0],
@@ -60,7 +60,7 @@ def test_append(posterior):
     len_before_append = len(copied_posterior)
     sorted_location = copied_posterior.locations[-1] + 1.0
     last_rv = copied_posterior.rvs[-1]
-    state = filtsmooth.gaussian.KalmanPosterior.State(
+    state = filtsmooth.gaussian.KalmanState(
         rv=last_rv, t=sorted_location, transition=copied_posterior.transitions[-1]
     )
 
