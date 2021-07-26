@@ -1,7 +1,7 @@
 """Gaussian filtering and smoothing."""
 
 from ._kalman import Kalman
-from ._kalmanposterior import FilteringPosterior, KalmanPosterior, SmoothingPosterior
+from ._kalman_posterior import FilteringPosterior, KalmanPosterior, SmoothingPosterior
 
 # Public classes and functions. Order is reflected in documentation.
 __all__ = [

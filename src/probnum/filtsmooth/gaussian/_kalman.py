@@ -8,7 +8,7 @@ import numpy as np
 
 from probnum import problems, randprocs
 from probnum.filtsmooth import _bayesfiltsmooth, _timeseriesposterior, optim
-from probnum.filtsmooth.gaussian import _kalmanposterior, approx
+from probnum.filtsmooth.gaussian import _kalman_posterior, approx
 
 # Measurement models for a Kalman filter can be all sorts of things:
 KalmanSingleMeasurementModelType = Union[
@@ -36,7 +36,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
     def iterated_filtsmooth(
         self,
         regression_problem: problems.TimeSeriesRegressionProblem,
-        init_posterior: Optional[_kalmanposterior.SmoothingPosterior] = None,
+        init_posterior: Optional[_kalman_posterior.SmoothingPosterior] = None,
         stopcrit: Optional[optim.StoppingCriterion] = None,
     ):
         """Compute an iterated smoothing estimate with repeated posterior linearisation.
@@ -76,7 +76,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
     def iterated_filtsmooth_posterior_generator(
         self,
         regression_problem: problems.TimeSeriesRegressionProblem,
-        init_posterior: Optional[_kalmanposterior.SmoothingPosterior] = None,
+        init_posterior: Optional[_kalman_posterior.SmoothingPosterior] = None,
         stopcrit: Optional[optim.StoppingCriterion] = None,
     ):
         """Compute iterated smoothing estimates with repeated posterior linearisation.
@@ -194,7 +194,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
         TimeSeriesRegressionProblem: a regression problem data class
         """
 
-        posterior = _kalmanposterior.FilteringPosterior()
+        posterior = _kalman_posterior.FilteringPosterior()
         info_dicts = []
 
         for state, info in self.filtered_states_generator(
@@ -239,7 +239,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
             )
 
         # Initialise
-        state = _kalmanposterior.FilteringPosterior.State(
+        state = _kalman_posterior.FilteringPosterior.State(
             rv=self.prior_process.initrv,
             t=self.prior_process.initarg,
             transition=self.prior_process.transition,
@@ -297,7 +297,7 @@ class Kalman(_bayesfiltsmooth.BayesFiltSmooth):
             transition_list=filter_posterior.transitions,
         )
 
-        return _kalmanposterior.SmoothingPosterior(
+        return _kalman_posterior.SmoothingPosterior(
             filtering_posterior=filter_posterior,
             transitions=filter_posterior.transitions,
             locations=filter_posterior.locations,
