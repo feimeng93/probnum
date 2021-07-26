@@ -17,7 +17,7 @@ def state_list():
 @pytest.fixture
 def posterior(state_list):
     return filtsmooth.particle.ParticleFilterPosterior(
-        states=state_list, locations=np.arange(20)
+        rvs=state_list, locations=np.arange(20)
     )
 
 
@@ -38,32 +38,32 @@ def test_call(posterior):
 
 
 def test_mode(posterior):
-    mode = posterior.states.mode
-    assert mode.shape == (len(posterior),) + posterior.states[0].shape
+    mode = posterior.rvs.mode
+    assert mode.shape == (len(posterior),) + posterior.rvs[0].shape
 
 
 def test_support(posterior):
-    support = posterior.states.support
+    support = posterior.rvs.support
     assert (
         support.shape
         == (len(posterior),)
-        + (len(posterior.states[0].probabilities),)
-        + posterior.states[0].shape
+        + (len(posterior.rvs[0].probabilities),)
+        + posterior.rvs[0].shape
     )
 
 
 def test_probabilities(posterior):
-    probabilities = posterior.states.probabilities
+    probabilities = posterior.rvs.probabilities
     assert probabilities.shape == (len(posterior),) + (
-        len(posterior.states[0].probabilities),
+        len(posterior.rvs[0].probabilities),
     )
 
 
 def test_resample(posterior, rng):
-    resampled_posterior = posterior.states.resample(rng=rng)
+    resampled_posterior = posterior.rvs.resample(rng=rng)
     assert (
         resampled_posterior.support.shape
         == (len(posterior),)
-        + (len(posterior.states[0].probabilities),)
-        + posterior.states[0].shape
+        + (len(posterior.rvs[0].probabilities),)
+        + posterior.rvs[0].shape
     )

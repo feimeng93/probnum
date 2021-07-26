@@ -27,8 +27,8 @@ def effective_number_of_events(categ_rv: randvars.Categorical) -> float:
     """Approximate effective number of events in the support of a categorical random
     variable.
 
-    In a particle filter, this is used as the effective number of
-    particles which may indicate the need for resampling.
+    In a particle filter, this is used as the effective number of particles which may
+    indicate the need for resampling.
     """
     return 1.0 / np.sum(categ_rv.probabilities ** 2)
 
@@ -113,7 +113,7 @@ class ParticleFilter(_bayesfiltsmooth.BayesFiltSmooth):
             info_dicts.append(info)
 
         posterior = _particle_filter_posterior.ParticleFilterPosterior(
-            states=filtered_rvs,
+            rvs=filtered_rvs,
             locations=regression_problem.locations,
         )
 

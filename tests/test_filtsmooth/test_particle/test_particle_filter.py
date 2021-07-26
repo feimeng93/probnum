@@ -96,10 +96,10 @@ def pf_output(particle_filter_setup, regression_problem):
 @all_resampling_configurations
 def test_shape_pf_output(pf_output, regression_problem, num_particles):
 
-    states = pf_output.states.support
-    weights = pf_output.states.probabilities
+    rvs = pf_output.rvs.support
+    weights = pf_output.rvs.probabilities
     num_gridpoints = len(regression_problem.locations)
-    assert states.shape == (num_gridpoints, num_particles, 2)
+    assert rvs.shape == (num_gridpoints, num_particles, 2)
     assert weights.shape == (num_gridpoints, num_particles)
 
 
@@ -109,15 +109,13 @@ def test_rmse_particlefilter(pf_output, regression_problem):
     """Assert that the RMSE of the mode of the posterior of the PF is a lot smaller than
     the RMSE of the data."""
 
-    true_states = regression_problem.solution
+    true_rvs = regression_problem.solution
 
-    mode = pf_output.states.mode
-    rmse_mode = np.linalg.norm(np.sin(mode) - np.sin(true_states)) / np.sqrt(
-        true_states.size
-    )
+    mode = pf_output.rvs.mode
+    rmse_mode = np.linalg.norm(np.sin(mode) - np.sin(true_rvs)) / np.sqrt(true_rvs.size)
     rmse_data = np.linalg.norm(
-        regression_problem.observations - np.sin(true_states)
-    ) / np.sqrt(true_states.size)
+        regression_problem.observations - np.sin(true_rvs)
+    ) / np.sqrt(true_rvs.size)
 
     # RMSE of PF.mode strictly better than RMSE of data
     assert rmse_mode < 0.99 * rmse_data
