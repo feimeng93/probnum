@@ -104,13 +104,21 @@ class NonlinearGaussian(_transition.Transition):
         _diffusion=1.0,
         **kwargs,
     ):
-
-        # Should we use the _backward_rv_classic here?
-        # It is only intractable bc. forward_rv is intractable
-        # and assuming its forward formula would yield a valid
-        # gain, the backward formula would be valid.
-        # This is the case for the UKF, for instance.
-        raise NotImplementedError("Not available")
+        return self._backward_rv_classic(
+            rv_obtained=rv_obtained,
+            rv=rv,
+            rv_forward=rv_forwarded,
+            gain=gain,
+            t=t,
+            _diffusion=_diffusion,
+        )
+        #
+        # # Should we use the _backward_rv_classic here?
+        # # It is only intractable bc. forward_rv is intractable
+        # # and assuming its forward formula would yield a valid
+        # # gain, the backward formula would be valid.
+        # # This is the case for the UKF, for instance.
+        # raise NotImplementedError("Not available")
 
     # Implementations that are the same for all sorts of
     # discrete Gaussian transitions, in particular shared
