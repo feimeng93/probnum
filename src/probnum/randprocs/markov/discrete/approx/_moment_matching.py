@@ -39,6 +39,7 @@ class UnscentedTransformTransition(MomentMatchingTransition):
             spread ** 2 * (non_linear_model.input_dim + special_scale)
             - non_linear_model.input_dim
         )
+
         self._mean_weights, self._cov_weights = self._unscented_weights(
             spread=spread,
             priorpar=priorpar,
@@ -48,7 +49,6 @@ class UnscentedTransformTransition(MomentMatchingTransition):
         self._unit_quadrature_nodes = self._unit_nodes()
 
     def assemble_quadrature_rule(self, at):
-        print(at)
         nodes = at.mean[None, :] + self._unit_quadrature_nodes @ at.cov_cholesky
         return _MomentMatchingQuadratureRule(
             nodes=nodes, mean_weights=self._mean_weights, cov_weights=self._cov_weights
@@ -77,9 +77,11 @@ class UnscentedTransformTransition(MomentMatchingTransition):
     def _unit_nodes(self):
         N = self.non_linear_model.input_dim
         sigma_pts = np.zeros((2 * N + 1, N))
-        sigma_pts[1 : N + 1] = np.diag(np.sqrt(np.arange(N) + self._scaling_parameter))
+        sigma_pts[1 : N + 1] = np.diag(
+            np.sqrt(N * np.ones(N) + self._scaling_parameter)
+        )
         sigma_pts[N + 1 : 2 * N + 1] = np.diag(
-            -np.sqrt(np.arange(N) + self._scaling_parameter)
+            -np.sqrt(N * np.ones(N) + self._scaling_parameter)
         )
         return sigma_pts
 
@@ -128,5 +130,7 @@ class _MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
         gx = np.stack([transition_function(x) for x in X])
         new_mean = mw @ gx
         new_cov = cw @ np.outer(gx - new_mean, gx - new_mean) + transition_cov_matrix
-        new_crosscov = cw @ np.outer(X - init_mean, gx - new_mean)
+        print(np.outer(X - init_mean[None, :], gx - new_mean).shape)
+        print(cw.shape)
+        new_crosscov = cw @ np.outer(X - init_mean[None, :], gx - new_mean)
         return randvars.Normal(new_mean, new_cov), {"crosscov": new_crosscov}
