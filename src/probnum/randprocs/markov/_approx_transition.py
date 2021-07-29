@@ -71,7 +71,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
     ):
         lin_state = rv if _linearise_at is None else _linearise_at
         linearized = self.linearize(at=lin_state)
-        return linearized.backward_realization(
+        return linearized.backward_rv(
             rv_obtained=rv_obtained,
             rv=rv,
             rv_forwarded=rv_forwarded,

@@ -3,6 +3,7 @@ import abc
 import dataclasses
 
 import numpy as np
+import scipy.linalg
 
 from probnum import randvars
 from probnum.randprocs.markov import _approx_transition
@@ -49,7 +50,11 @@ class UnscentedTransformTransition(MomentMatchingTransition):
         self._unit_quadrature_nodes = self._unit_nodes()
 
     def assemble_quadrature_rule(self, at):
-        nodes = at.mean[None, :] + self._unit_quadrature_nodes @ at.cov_cholesky
+        if at.cov_cholesky_is_precomputed:
+            SC = at.cov_cholesky
+        else:
+            SC = scipy.linalg.sqrtm(at.cov)
+        nodes = at.mean[None, :] + self._unit_quadrature_nodes @ SC
         return _MomentMatchingQuadratureRule(
             nodes=nodes, mean_weights=self._mean_weights, cov_weights=self._cov_weights
         )
@@ -114,7 +119,9 @@ class _MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
         self.quadrature_rule = quadrature_rule
         self.non_linear_model = non_linear_model
 
-    def forward_rv(self, rv, t, compute_gain=False, _diffusion=1.0, _linearise_at=None):
+    def forward_rv(
+        self, rv, t, compute_gain=False, _diffusion=1.0, _linearise_at=None, **kwargs
+    ):
         # Already linearized.
         # The only way the `rv` enters is in the computation of the cross-covariance
         g = lambda x: self.non_linear_model.state_trans_fun(t, x)
@@ -129,8 +136,8 @@ class _MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
         X = self.quadrature_rule.nodes
         gx = np.stack([transition_function(x) for x in X])
         new_mean = mw @ gx
-        new_cov = cw @ np.outer(gx - new_mean, gx - new_mean) + transition_cov_matrix
-        print(np.outer(X - init_mean[None, :], gx - new_mean).shape)
-        print(cw.shape)
-        new_crosscov = cw @ np.outer(X - init_mean[None, :], gx - new_mean)
+        new_cov = (gx - new_mean).T @ (
+            cw[:, None] * (gx - new_mean)
+        ) + transition_cov_matrix
+        new_crosscov = (cw[None, :] * (X - init_mean[None, :]).T) @ (gx - new_mean)
         return randvars.Normal(new_mean, new_cov), {"crosscov": new_crosscov}
