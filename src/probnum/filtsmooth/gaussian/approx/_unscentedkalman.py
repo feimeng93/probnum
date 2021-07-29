@@ -157,101 +157,23 @@ class DiscreteUKFComponent(UKFComponent, randprocs.markov.discrete.NonlinearGaus
         priorpar: Optional[FloatArgType] = 2.0,
         special_scale: Optional[FloatArgType] = 0.0,
     ) -> None:
-        UKFComponent.__init__(
-            self,
-            non_linear_model,
-            spread=spread,
-            priorpar=priorpar,
-            special_scale=special_scale,
+        self.ut_transition = (
+            randprocs.markov.discrete.approx.UnscentedTransformTransition(
+                non_linear_model=non_linear_model,
+                spread=spread,
+                priorpar=priorpar,
+                special_scale=special_scale,
+            )
         )
 
-        randprocs.markov.discrete.NonlinearGaussian.__init__(
-            self,
-            non_linear_model.input_dim,
-            non_linear_model.output_dim,
-            non_linear_model.state_trans_fun,
-            non_linear_model.proc_noise_cov_mat_fun,
-            non_linear_model.jacob_state_trans_fun,
-            non_linear_model.proc_noise_cov_cholesky_fun,
-        )
+    def forward_rv(self, *args, **kwargs):
+        return self.ut_transition.forward_rv(*args, **kwargs)
 
-    def forward_rv(
-        self, rv, t, compute_gain=False, _diffusion=1.0, _linearise_at=None, **kwargs
-    ) -> Tuple[randvars.Normal, Dict]:
-        compute_sigmapts_at = _linearise_at if _linearise_at is not None else rv
-        self.sigma_points = self.assemble_sigma_points(at_this_rv=compute_sigmapts_at)
+    def forward_realization(self, *args, **kwargs):
+        return self.ut_transition.forward_realization(*args, **kwargs)
 
-        proppts = self.ut.propagate(
-            t, self.sigma_points, self.non_linear_model.state_trans_fun
-        )
-        meascov = _diffusion * self.non_linear_model.proc_noise_cov_mat_fun(t)
-        mean, cov, crosscov = self.ut.estimate_statistics(
-            proppts, self.sigma_points, meascov, rv.mean
-        )
-        info = {"crosscov": crosscov}
-        if compute_gain:
-            gain = crosscov @ np.linalg.inv(cov)
-            info["gain"] = gain
-        return randvars.Normal(mean, cov), info
+    def backward_rv(self, *args, **kwargs):
+        return self.ut_transition.backward_rv(*args, **kwargs)
 
-    def forward_realization(
-        self, realization, t, _diffusion=1.0, _linearise_at=None, **kwargs
-    ):
-
-        return self._forward_realization_via_forward_rv(
-            realization,
-            t=t,
-            compute_gain=False,
-            _diffusion=_diffusion,
-            _linearise_at=_linearise_at,
-        )
-
-    def backward_rv(
-        self,
-        rv_obtained,
-        rv,
-        rv_forwarded=None,
-        gain=None,
-        t=None,
-        _diffusion=1.0,
-        _linearise_at=None,
-        **kwargs
-    ):
-
-        # this method is inherited from NonlinearGaussian.
-        return self._backward_rv_classic(
-            rv_obtained,
-            rv,
-            rv_forwarded,
-            gain=gain,
-            t=t,
-            _diffusion=_diffusion,
-            _linearise_at=None,
-        )
-
-    def backward_realization(
-        self,
-        realization_obtained,
-        rv,
-        rv_forwarded=None,
-        gain=None,
-        t=None,
-        _diffusion=1.0,
-        _linearise_at=None,
-        **kwargs
-    ):
-
-        # this method is inherited from NonlinearGaussian.
-        return self._backward_realization_via_backward_rv(
-            realization_obtained,
-            rv,
-            rv_forwarded,
-            gain=gain,
-            t=t,
-            _diffusion=_diffusion,
-            _linearise_at=_linearise_at,
-        )
-
-    @property
-    def dimension(self) -> int:
-        return self.ut.dimension
+    def backward_realization(self, *args, **kwargs):
+        return self.ut_transition.backward_realization(*args, **kwargs)

@@ -1,5 +1,6 @@
 """Discrete-time transitions."""
 
+from . import approx
 from ._condition_state import condition_state_on_measurement, condition_state_on_rv
 from ._linear_gaussian import LinearGaussian
 from ._lti_gaussian import LTIGaussian

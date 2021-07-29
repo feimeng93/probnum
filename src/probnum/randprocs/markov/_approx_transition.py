@@ -8,7 +8,7 @@ from probnum.randprocs.markov import _transition
 __all__ = ["ApproximateTransition"]
 
 
-class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
+class ApproximateTransition(_transition.Transition, abc.ABC):
     """Approximate transitions.
 
     Interface for Taylor-series approximations (extended Kalman filtering), moment
@@ -25,11 +25,9 @@ class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
     def non_linear_model(self):
         return self._non_linear_model
 
-    @abc.abstractmethod
     def linearize(self, at: randvars.RandomVariable) -> _transition.Transition:
         raise NotImplementedError
 
-    @abc.abstractmethod
     def forward_rv(
         self, rv, t, dt=None, compute_gain=False, _diffusion=1.0, _linearise_at=None
     ):
@@ -39,7 +37,6 @@ class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
             rv=rv, t=t, dt=dt, compute_gain=compute_gain, _diffusion=_diffusion
         )
 
-    @abc.abstractmethod
     def forward_realization(
         self,
         realization,
@@ -63,7 +60,6 @@ class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
             _diffusion=_diffusion,
         )
 
-    @abc.abstractmethod
     def backward_rv(
         self,
         rv_obtained,
@@ -87,7 +83,6 @@ class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
             _diffusion=_diffusion,
         )
 
-    @abc.abstractmethod
     def backward_realization(
         self,
         realization_obtained,
@@ -110,3 +105,6 @@ class ApproximateTransition(randprocs.markov.Transition, abc.ABC):
             dt=dt,
             _diffusion=_diffusion,
         )
+
+    def _duplicate(self, **changes):
+        raise NotImplementedError

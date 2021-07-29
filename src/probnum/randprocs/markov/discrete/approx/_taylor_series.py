@@ -1,7 +1,8 @@
 """Discrete Taylor-series approximations."""
 
 
-from randprocs.markov import _approx_transition
+from probnum import randvars
+from probnum.randprocs.markov import _approx_transition, _transition
 
 __all__ = ["LocallyLinearizingTransition"]
 

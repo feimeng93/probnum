@@ -1,7 +1,12 @@
 """Moment matching linearization."""
 import abc
+import dataclasses
 
-from randprocs.markov import _approx_transition
+import numpy as np
+
+from probnum import randvars
+from probnum.randprocs.markov import _approx_transition
+from probnum.randprocs.markov.discrete import _nonlinear_gaussian
 
 
 # Not the same as _MomentMatchedTransition!
@@ -15,11 +20,7 @@ class MomentMatchingTransition(_approx_transition.ApproximateTransition, abc.ABC
 
         super().__init__(non_linear_model=non_linear_model)
 
-        self.ut = _unscented_transform.UnscentedTransform(
-            non_linear_model.input_dim, spread, priorpar, special_scale
-        )
-
-    def linearize(self, at) -> _MomentMatchedTransition:
+    def linearize(self, at) -> "_MomentMatchedTransition":
         quadrule = self.assemble_quadrature_rule(at=at)
         return _MomentMatchedTransition(quadrule, **non_linear_model_parameters)
 
@@ -47,6 +48,7 @@ class UnscentedTransformTransition(MomentMatchingTransition):
         self._unit_quadrature_nodes = self._unit_nodes()
 
     def assemble_quadrature_rule(self, at):
+        print(at)
         nodes = at.mean[None, :] + self._unit_quadrature_nodes @ at.cov_cholesky
         return _MomentMatchingQuadratureRule(
             nodes=nodes, mean_weights=self._mean_weights, cov_weights=self._cov_weights
@@ -54,8 +56,10 @@ class UnscentedTransformTransition(MomentMatchingTransition):
 
     @staticmethod
     def _unscented_weights(spread, priorpar, dimension, scale):
-        mweights = self._mean_weights(dimension, scale)
-        cweights = self._cov_weights(dimension, spread, priorpar, scale)
+        mweights = UnscentedTransformTransition._mean_weights(dimension, scale)
+        cweights = UnscentedTransformTransition._cov_weights(
+            dimension, spread, priorpar, scale
+        )
         return mweights, cweights
 
     @staticmethod
