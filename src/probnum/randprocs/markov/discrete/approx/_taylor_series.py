@@ -2,7 +2,7 @@
 
 
 from probnum import randvars
-from probnum.randprocs.markov import _approx_transition, _transition
+from probnum.randprocs.markov import _approx_transition, _transition, discrete
 
 __all__ = ["LocallyLinearizingTransition"]
 
@@ -33,7 +33,7 @@ class LocallyLinearizingTransition(_approx_transition.ApproximateTransition):
         def dynamicsmatfun(t):
             return dg(t, x0)
 
-        return randprocs.markov.discrete.LinearGaussian(
+        return discrete.LinearGaussian(
             input_dim=self.non_linear_model.input_dim,
             output_dim=self.non_linear_model.output_dim,
             state_trans_mat_fun=dynamicsmatfun,

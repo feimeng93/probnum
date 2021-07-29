@@ -104,7 +104,6 @@ class EKFComponent(abc.ABC):
             _diffusion=_diffusion,
         )
 
-    @abc.abstractmethod
     def linearize(
         self, at_this_rv: randvars.RandomVariable
     ) -> randprocs.markov.Transition:
@@ -195,42 +194,22 @@ class DiscreteEKFComponent(EKFComponent, randprocs.markov.discrete.NonlinearGaus
         forward_implementation="classic",
         backward_implementation="classic",
     ) -> None:
-
-        randprocs.markov.discrete.NonlinearGaussian.__init__(
-            self,
-            non_linear_model.input_dim,
-            non_linear_model.output_dim,
-            non_linear_model.state_trans_fun,
-            non_linear_model.proc_noise_cov_mat_fun,
-            non_linear_model.jacob_state_trans_fun,
-            non_linear_model.proc_noise_cov_cholesky_fun,
+        self.ts_transition = (
+            randprocs.markov.discrete.approx.LocallyLinearizingTransition(
+                non_linear_model=non_linear_model,
+                forward_implementation=forward_implementation,
+                backward_implementation=backward_implementation,
+            )
         )
-        EKFComponent.__init__(self, non_linear_model=non_linear_model)
 
-        self.forward_implementation = forward_implementation
-        self.backward_implementation = backward_implementation
+    def forward_rv(self, *args, **kwargs):
+        return self.ts_transition.forward_rv(*args, **kwargs)
 
-    def linearize(self, at_this_rv: randvars.Normal):
-        """Linearize the dynamics function with a first order Taylor expansion."""
+    def forward_realization(self, *args, **kwargs):
+        return self.ts_transition.forward_realization(*args, **kwargs)
 
-        g = self.non_linear_model.state_trans_fun
-        dg = self.non_linear_model.jacob_state_trans_fun
+    def backward_rv(self, *args, **kwargs):
+        return self.ts_transition.backward_rv(*args, **kwargs)
 
-        x0 = at_this_rv.mean
-
-        def force_vector_function(t):
-            return g(t, x0) - dg(t, x0) @ x0
-
-        def dynamicsmatfun(t):
-            return dg(t, x0)
-
-        return randprocs.markov.discrete.LinearGaussian(
-            input_dim=self.non_linear_model.input_dim,
-            output_dim=self.non_linear_model.output_dim,
-            state_trans_mat_fun=dynamicsmatfun,
-            shift_vec_fun=force_vector_function,
-            proc_noise_cov_mat_fun=self.non_linear_model.proc_noise_cov_mat_fun,
-            proc_noise_cov_cholesky_fun=self.non_linear_model.proc_noise_cov_cholesky_fun,
-            forward_implementation=self.forward_implementation,
-            backward_implementation=self.backward_implementation,
-        )
+    def backward_realization(self, *args, **kwargs):
+        return self.ts_transition.backward_realization(*args, **kwargs)
