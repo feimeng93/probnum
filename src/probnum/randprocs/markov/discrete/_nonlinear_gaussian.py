@@ -92,7 +92,14 @@ class NonlinearGaussian(_transition.Transition):
         _diffusion=1.0,
         **kwargs,
     ):
-        raise NotImplementedError("Not available")
+        return self._backward_realization_via_backward_rv(
+            realization=realization_obtained,
+            rv=rv,
+            rv_forwarded=rv_forwarded,
+            gain=gain,
+            t=t,
+            _diffusion=_diffusion,
+        )
 
     def backward_rv(
         self,
@@ -107,7 +114,7 @@ class NonlinearGaussian(_transition.Transition):
         return self._backward_rv_classic(
             rv_obtained=rv_obtained,
             rv=rv,
-            rv_forward=rv_forwarded,
+            rv_forwarded=rv_forwarded,
             gain=gain,
             t=t,
             _diffusion=_diffusion,

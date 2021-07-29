@@ -22,7 +22,7 @@ class MomentMatchingTransition(_approx_transition.ApproximateTransition, abc.ABC
 
     def linearize(self, at) -> "_MomentMatchedTransition":
         quadrule = self.assemble_quadrature_rule(at=at)
-        return _MomentMatchedTransition(quadrule, **non_linear_model_parameters)
+        return _MomentMatchedTransition(quadrule, self.non_linear_model)
 
     @abc.abstractmethod
     def assemble_quadrature_rule(self, at):
@@ -100,24 +100,33 @@ class _MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
     """A non-linear, discrete, Gaussian transition that knows forward_rv (thus enables
     inference)."""
 
-    def __init__(self, quadrature_rule, **other_inits_for_gaussian):
-        super().__init__(**other_inits_for_gaussian)
+    def __init__(self, quadrature_rule, non_linear_model):
+        super().__init__(
+            input_dim=non_linear_model.input_dim,
+            output_dim=non_linear_model.output_dim,
+            state_trans_fun=non_linear_model.state_trans_fun,
+            proc_noise_cov_mat_fun=non_linear_model.proc_noise_cov_mat_fun,
+            jacob_state_trans_fun=non_linear_model.jacob_state_trans_fun,
+            proc_noise_cov_cholesky_fun=non_linear_model.proc_noise_cov_cholesky_fun,
+        )
         self.quadrature_rule = quadrature_rule
+        self.non_linear_model = non_linear_model
 
     def forward_rv(self, rv, t, compute_gain=False, _diffusion=1.0, _linearise_at=None):
         # Already linearized.
         # The only way the `rv` enters is in the computation of the cross-covariance
-        g = lambda x: self.non_linear_model.proc_noise_cov_mat_fun(rv=x, t=t)
-        S = _diffusion * self.non_linear_model.proc_noise_cov_mat_fun(t=t)
+        g = lambda x: self.non_linear_model.state_trans_fun(t, x)
+        S = _diffusion * self.non_linear_model.proc_noise_cov_mat_fun(t)
         new_rv, info = self._propagate_moments(g, S, rv.mean)
         if compute_gain:
             info["gain"] = info["crosscov"] @ np.linalg.inv(new_rv.cov)
         return new_rv, info
 
     def _propagate_moments(self, transition_function, transition_cov_matrix, init_mean):
-        w, X = self.quadrature_rule.weights, self.quadrature_rule.nodes
+        mw, cw = self.quadrature_rule.mean_weights, self.quadrature_rule.cov_weights
+        X = self.quadrature_rule.nodes
         gx = np.stack([transition_function(x) for x in X])
-        new_mean = w @ gx
-        new_cov = w @ np.outer(gx - new_mean, gx - new_mean) + transition_cov_matrix
-        new_crosscov = w @ np.outer(X - init_mean, gx - new_mean)
+        new_mean = mw @ gx
+        new_cov = cw @ np.outer(gx - new_mean, gx - new_mean) + transition_cov_matrix
+        new_crosscov = cw @ np.outer(X - init_mean, gx - new_mean)
         return randvars.Normal(new_mean, new_cov), {"crosscov": new_crosscov}

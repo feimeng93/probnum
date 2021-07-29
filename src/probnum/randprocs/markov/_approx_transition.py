@@ -31,7 +31,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
     def forward_rv(
         self, rv, t, dt=None, compute_gain=False, _diffusion=1.0, _linearise_at=None
     ):
-        lin_state = rv if _linearise_at is not None else _linearise_at
+        lin_state = rv if _linearise_at is None else _linearise_at
         linearized = self.linearize(at=lin_state)
         return linearized.forward_rv(
             rv=rv, t=t, dt=dt, compute_gain=compute_gain, _diffusion=_diffusion
@@ -47,9 +47,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
         _linearise_at=None,
     ):
         lin_state = (
-            randvars.Constant(realization)
-            if _linearise_at is not None
-            else _linearise_at
+            randvars.Constant(realization) if _linearise_at is None else _linearise_at
         )
         linearized = self.linearize(at=lin_state)
         return linearized.forward_realization(
@@ -71,7 +69,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
         _diffusion=1.0,
         _linearise_at=None,
     ):
-        lin_state = rv if _linearise_at is not None else _linearise_at
+        lin_state = rv if _linearise_at is None else _linearise_at
         linearized = self.linearize(at=lin_state)
         return linearized.backward_realization(
             rv_obtained=rv_obtained,
@@ -94,7 +92,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
         _diffusion=1.0,
         _linearise_at=None,
     ):
-        lin_state = rv if _linearise_at is not None else _linearise_at
+        lin_state = rv if _linearise_at is None else _linearise_at
         linearized = self.linearize(at=lin_state)
         return linearized.backward_realization(
             realization_obtained=realization_obtained,
