@@ -25,6 +25,7 @@ class ApproximateTransition(_transition.Transition, abc.ABC):
     def non_linear_model(self):
         return self._non_linear_model
 
+    @abc.abstractmethod
     def linearize(self, at: randvars.RandomVariable) -> _transition.Transition:
         raise NotImplementedError
 

@@ -4,7 +4,7 @@ from probnum import randprocs
 from probnum.filtsmooth.optim import _stoppingcriterion
 
 
-class IteratedDiscreteComponent(randprocs.markov.Transition):
+class IteratedDiscreteComponent(randprocs.markov.ApproximateTransition):
     """Iterated updates.
 
     Examples
