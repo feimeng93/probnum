@@ -8,6 +8,12 @@ __all__ = ["LocallyLinearizingTransition"]
 
 
 class LocallyLinearizingTransition(_approx_transition.ApproximateTransition):
+    """Locally linearizing transitions.
+
+    Approximate a non-linear (i.e. intractable) transition by linearizing the non-
+    linearities with a first-order Taylor approximation.
+    """
+
     def __init__(
         self,
         non_linear_model,
