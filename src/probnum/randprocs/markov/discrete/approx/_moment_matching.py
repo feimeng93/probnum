@@ -10,7 +10,7 @@ from probnum.randprocs.markov import _approx_transition
 from probnum.randprocs.markov.discrete import _nonlinear_gaussian
 
 
-# Not the same as _MomentMatchedTransition!
+# Not the same as MomentMatchedTransition!
 class MomentMatchingTransition(_approx_transition.ApproximateTransition, abc.ABC):
     """Approximate a transition by moment-matching through the non-linearities."""
 
@@ -21,9 +21,9 @@ class MomentMatchingTransition(_approx_transition.ApproximateTransition, abc.ABC
 
         super().__init__(non_linear_model=non_linear_model)
 
-    def linearize(self, at) -> "_MomentMatchedTransition":
+    def linearize(self, at) -> "MomentMatchedTransition":
         quadrule = self.assemble_quadrature_rule(at=at)
-        return _MomentMatchedTransition(quadrule, self.non_linear_model)
+        return MomentMatchedTransition(quadrule, self.non_linear_model)
 
     @abc.abstractmethod
     def assemble_quadrature_rule(self, at):
@@ -103,7 +103,7 @@ class _MomentMatchingQuadratureRule:
     cov_weights: np.ndarray
 
 
-class _MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
+class MomentMatchedTransition(_nonlinear_gaussian.NonlinearGaussian):
     """A non-linear, discrete, Gaussian transition that knows forward_rv (thus enables
     inference)."""
 

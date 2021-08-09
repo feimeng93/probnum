@@ -1,4 +1,4 @@
-"""Tests for Taylor-series transitions."""
+"""Tests for moment matching transitions."""
 
 import numpy as np
 import pytest
@@ -24,8 +24,8 @@ def non_linear_model(pendulum):
 
 
 @pytest.fixture
-def linearizing_model(non_linear_model):
-    return randprocs.markov.discrete.approx.LocallyLinearizingTransition(
+def moment_matching_model(non_linear_model):
+    return randprocs.markov.discrete.approx.UnscentedTransformTransition(
         non_linear_model
     )
 
@@ -36,29 +36,31 @@ def initvals(pendulum):
     return info["prior_process"].initrv, info["prior_process"].initarg
 
 
-def test_forward_rv(non_linear_model, linearizing_model, initvals):
+def test_forward_rv(non_linear_model, moment_matching_model, initvals):
     rv, t = initvals
 
     with pytest.raises(NotImplementedError):
         non_linear_model.forward_rv(rv, t)
 
-    out, _ = linearizing_model.forward_rv(rv, t)
+    out, _ = moment_matching_model.forward_rv(rv, t)
 
     assert isinstance(out, randvars.RandomVariable)
 
 
-def test_backward_rv(non_linear_model, linearizing_model, initvals):
+def test_backward_rv(non_linear_model, moment_matching_model, initvals):
     rv, t = initvals
 
     with pytest.raises(NotImplementedError):
         non_linear_model.backward_rv(rv[0], rv)
 
-    out, _ = linearizing_model.backward_rv(rv[0], rv)
+    out, _ = moment_matching_model.backward_rv(rv[0], rv)
 
     assert isinstance(out, randvars.RandomVariable)
 
 
-def test_approximate(linearizing_model, initvals):
+def test_approximate(moment_matching_model, initvals):
     rv, _ = initvals
-    linear_model = linearizing_model.linearize(at=rv)
-    assert isinstance(linear_model, randprocs.markov.discrete.LinearGaussian)
+    linear_model = moment_matching_model.linearize(at=rv)
+    assert isinstance(
+        linear_model, randprocs.markov.discrete.approx.MomentMatchedTransition
+    )
