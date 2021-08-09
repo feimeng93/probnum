@@ -24,37 +24,43 @@ def non_linear_model(pendulum):
 
 
 @pytest.fixture
-def initvals(pendulum):
-    _, info = pendulum
-    return (info["prior_process"].initrv, info["prior_process"].initarg)
-
-
-@pytest.fixture
-def linearized_model(non_linear_model):
+def linearizing_model(non_linear_model):
     return randprocs.markov.discrete.approx.LocallyLinearizingTransition(
         non_linear_model
     )
 
 
-def test_forward_rv(non_linear_model, linearized_model, initvals):
+@pytest.fixture
+def initvals(pendulum):
+    _, info = pendulum
+    return (info["prior_process"].initrv, info["prior_process"].initarg)
+
+
+def test_forward_rv(non_linear_model, linearizing_model, initvals):
     rv, t = initvals
-    print(non_linear_model, linearized_model, rv)
+    print(non_linear_model, linearizing_model, rv)
 
     with pytest.raises(NotImplementedError):
         non_linear_model.forward_rv(rv, t)
 
-    out, _ = linearized_model.forward_rv(rv, t)
+    out, _ = linearizing_model.forward_rv(rv, t)
 
     assert isinstance(out, randvars.RandomVariable)
 
 
-def test_backward_rv(non_linear_model, linearized_model, initvals):
+def test_backward_rv(non_linear_model, linearizing_model, initvals):
     rv, t = initvals
-    print(non_linear_model, linearized_model, rv)
+    print(non_linear_model, linearizing_model, rv)
 
     with pytest.raises(NotImplementedError):
         non_linear_model.backward_rv(rv[0], rv)
 
-    out, _ = linearized_model.backward_rv(rv[0], rv)
+    out, _ = linearizing_model.backward_rv(rv[0], rv)
 
     assert isinstance(out, randvars.RandomVariable)
+
+
+def test_approximate(linearizing_model, initvals):
+    rv, _ = initvals
+    linear_model = linearizing_model.linearize(at=rv)
+    assert isinstance(linear_model, randprocs.markov.discrete.LinearGaussian)
