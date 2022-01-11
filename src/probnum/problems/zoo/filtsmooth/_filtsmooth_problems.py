@@ -114,7 +114,7 @@ def car_tracking(
         proc_noise_cov_cholesky=measurement_cov_cholesky,
         forward_implementation=forward_implementation,
         backward_implementation=backward_implementation,
-    )
+    ).as_continuous_transition()
 
     if initrv is None:
         initrv = randvars.Normal(
@@ -223,7 +223,7 @@ def ornstein_uhlenbeck(
         proc_noise_cov_mat=measurement_variance * np.eye(1),
         forward_implementation=forward_implementation,
         backward_implementation=backward_implementation,
-    )
+    ).as_continuous_transition()
 
     if initrv is None:
         initrv = randvars.Normal(10.0 * np.ones(1), np.eye(1))
@@ -327,23 +327,23 @@ def pendulum(
     g = 9.81
 
     # Define non-linear dynamics and measurements
-    def f(t, x):
+    def f(x):
         x1, x2 = x
         y1 = x1 + x2 * step
         y2 = x2 - g * np.sin(x1) * step
         return np.array([y1, y2])
 
-    def df(t, x):
+    def df(x):
         x1, _ = x
         y1 = [1, step]
         y2 = [-g * np.cos(x1) * step, 1]
         return np.array([y1, y2])
 
-    def h(t, x):
+    def h(x):
         x1, _ = x
         return np.array([np.sin(x1)])
 
-    def dh(t, x):
+    def dh(x):
         x1, _ = x
         return np.array([[np.cos(x1), 0.0]])
 
@@ -357,17 +357,17 @@ def pendulum(
         input_dim=2,
         output_dim=2,
         state_trans_fun=f,
-        proc_noise_cov_mat_fun=lambda t: process_noise_cov,
+        proc_noise_cov_mat_fun=lambda: process_noise_cov,
         jacob_state_trans_fun=df,
-    )
+    ).as_continuous_transition()
 
     measurement_model = randprocs.markov.discrete.NonlinearGaussian(
         input_dim=2,
         output_dim=1,
         state_trans_fun=h,
-        proc_noise_cov_mat_fun=lambda t: measurement_variance * np.eye(1),
+        proc_noise_cov_mat_fun=lambda: measurement_variance * np.eye(1),
         jacob_state_trans_fun=dh,
-    )
+    ).as_continuous_transition()
 
     if initrv is None:
         initrv = randvars.Normal(np.ones(2), measurement_variance * np.eye(2))
@@ -470,7 +470,7 @@ def benes_daum(
         state_trans_mat=np.eye(1),
         shift_vec=np.zeros(1),
         proc_noise_cov_mat=measurement_variance * np.eye(1),
-    )
+    ).as_continuous_transition()
 
     # Generate data
     if time_grid is None:

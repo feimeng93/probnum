@@ -172,7 +172,7 @@ class LTISDE(_linear_sde.LinearSDE):
             qh,
             forward_implementation=self._forward_implementation_string,
             backward_implementation=self._backward_implementation_string,
-        )
+        ).as_continuous_transition()
 
 
 def _check_initial_state_dimensions(drift_matrix, force_vector, dispersion_matrix):

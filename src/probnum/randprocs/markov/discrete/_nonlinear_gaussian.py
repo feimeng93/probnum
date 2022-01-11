@@ -326,3 +326,179 @@ class NonlinearGaussian:
             proc_noise_cov_mat_fun=diff,
             proc_noise_cov_cholesky_fun=diff_cholesky,
         )
+
+    # Smoothing and sampling implementations
+    # Todo: move somewhere else. For example into functions that get lists of discrete transitions.
+
+    def smooth_list(
+        self, rv_list, locations, _diffusion_list, _previous_posterior=None
+    ):
+        """Apply smoothing to a list of random variables, according to the present
+        transition.
+
+        Parameters
+        ----------
+        rv_list : randvars._RandomVariableList
+            List of random variables to be smoothed.
+        locations :
+            Locations :math:`t` of the random variables in the time-domain. Used for continuous-time transitions.
+        _diffusion_list :
+            List of diffusions that correspond to the intervals in the locations.
+            If `locations=(t0, ..., tN)`, then `_diffusion_list=(d1, ..., dN)`, i.e. it contains one element less.
+        _previous_posterior :
+            Specify a previous posterior to improve linearisation in approximate backward passes.
+            Used in iterated smoothing based on posterior linearisation.
+
+        Returns
+        -------
+        randvars._RandomVariableList
+            List of smoothed random variables.
+        """
+
+        final_rv = rv_list[-1]
+        curr_rv = final_rv
+        out_rvs = [curr_rv]
+        for idx in reversed(range(1, len(locations))):
+            unsmoothed_rv = rv_list[idx - 1]
+
+            _linearise_smooth_step_at = (
+                None
+                if _previous_posterior is None
+                else _previous_posterior(locations[idx - 1])
+            )
+            squared_diffusion = _diffusion_list[idx - 1]
+
+            # Actual smoothing step
+            curr_rv, _ = self.backward_rv(
+                curr_rv,
+                unsmoothed_rv,
+                _diffusion=squared_diffusion,
+                _linearise_at=_linearise_smooth_step_at,
+            )
+            out_rvs.append(curr_rv)
+        out_rvs.reverse()
+        return randvars._RandomVariableList(out_rvs)
+
+    def jointly_transform_base_measure_realization_list_backward(
+        self,
+        base_measure_realizations: np.ndarray,
+        t: FloatLike,
+        rv_list: randvars._RandomVariableList,
+        _diffusion_list: np.ndarray,
+        _previous_posterior=None,
+    ) -> np.ndarray:
+        """Transform samples from a base measure into joint backward samples from a list
+        of random variables.
+
+        Parameters
+        ----------
+        base_measure_realizations :
+            Base measure realizations (usually samples from a standard Normal distribution).
+            These are transformed into joint realizations of the random variable list.
+        rv_list :
+            List of random variables to be jointly sampled from.
+        t :
+            Locations of the random variables in the list. Assumed to be sorted.
+        _diffusion_list :
+            List of diffusions that correspond to the intervals in the locations.
+            If `locations=(t0, ..., tN)`, then `_diffusion_list=(d1, ..., dN)`, i.e. it contains one element less.
+        _previous_posterior :
+            Previous posterior. Used for iterative posterior linearisation.
+
+        Returns
+        -------
+        np.ndarray
+            Jointly transformed realizations.
+        """
+        curr_rv = rv_list[-1]
+
+        curr_sample = curr_rv.mean + curr_rv.cov_cholesky @ base_measure_realizations[
+            -1
+        ].reshape((-1,))
+        out_samples = [curr_sample]
+
+        for idx in reversed(range(1, len(t))):
+            unsmoothed_rv = rv_list[idx - 1]
+            _linearise_smooth_step_at = (
+                None if _previous_posterior is None else _previous_posterior(t[idx - 1])
+            )
+
+            # Condition on the 'future' realization and sample
+            squared_diffusion = _diffusion_list[idx - 1]
+            dt = t[idx] - t[idx - 1]
+            curr_rv, _ = self.backward_realization(
+                curr_sample,
+                unsmoothed_rv,
+                _linearise_at=_linearise_smooth_step_at,
+                _diffusion=squared_diffusion,
+            )
+            curr_sample = (
+                curr_rv.mean
+                + curr_rv.cov_cholesky
+                @ base_measure_realizations[idx - 1].reshape(
+                    -1,
+                )
+            )
+            out_samples.append(curr_sample)
+
+        out_samples.reverse()
+        return out_samples
+
+    def jointly_transform_base_measure_realization_list_forward(
+        self,
+        base_measure_realizations: np.ndarray,
+        t: FloatLike,
+        initrv: randvars.RandomVariable,
+        _diffusion_list: np.ndarray,
+        _previous_posterior=None,
+    ) -> np.ndarray:
+        """Transform samples from a base measure into joint backward samples from a list
+        of random variables.
+
+        Parameters
+        ----------
+        base_measure_realizations :
+            Base measure realizations (usually samples from a standard Normal distribution).
+            These are transformed into joint realizations of the random variable list.
+        initrv :
+            Initial random variable.
+        t :
+            Locations of the random variables in the list. Assumed to be sorted.
+        _diffusion_list :
+            List of diffusions that correspond to the intervals in the locations.
+            If `locations=(t0, ..., tN)`, then `_diffusion_list=(d1, ..., dN)`, i.e. it contains one element less.
+        _previous_posterior :
+            Previous posterior. Used for iterative posterior linearisation.
+
+        Returns
+        -------
+        np.ndarray
+            Jointly transformed realizations.
+        """
+        curr_rv = initrv
+
+        curr_sample = curr_rv.mean + curr_rv.cov_cholesky @ base_measure_realizations[
+            0
+        ].reshape((-1,))
+        out_samples = [curr_sample]
+
+        for idx in range(1, len(t)):
+
+            _linearise_prediction_step_at = (
+                None if _previous_posterior is None else _previous_posterior(t[idx - 1])
+            )
+
+            squared_diffusion = _diffusion_list[idx - 1]
+            dt = t[idx] - t[idx - 1]
+            curr_rv, _ = self.forward_realization(
+                curr_sample,
+                _linearise_at=_linearise_prediction_step_at,
+                _diffusion=squared_diffusion,
+            )
+            curr_sample = (
+                curr_rv.mean
+                + curr_rv.cov_cholesky
+                @ base_measure_realizations[idx - 1].reshape((-1,))
+            )
+            out_samples.append(curr_sample)
+        return out_samples
