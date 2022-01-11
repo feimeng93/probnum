@@ -56,12 +56,12 @@ class LTIGaussian(_linear_gaussian.LinearGaussian):
         output_dim, input_dim = state_trans_mat.shape
 
         super().__init__(
-            input_dim,
-            output_dim,
-            state_trans_mat_fun=lambda t: state_trans_mat,
-            shift_vec_fun=lambda t: shift_vec,
-            proc_noise_cov_mat_fun=lambda t: proc_noise_cov_mat,
-            proc_noise_cov_cholesky_fun=lambda t: proc_noise_cov_cholesky,
+            input_dim=input_dim,
+            output_dim=output_dim,
+            state_trans_mat_fun=lambda: state_trans_mat,
+            shift_vec_fun=lambda: shift_vec,
+            proc_noise_cov_mat_fun=lambda: proc_noise_cov_mat,
+            proc_noise_cov_cholesky_fun=lambda: proc_noise_cov_cholesky,
             forward_implementation=forward_implementation,
             backward_implementation=backward_implementation,
         )
@@ -72,7 +72,7 @@ class LTIGaussian(_linear_gaussian.LinearGaussian):
         self.proc_noise_cov_mat = proc_noise_cov_mat
         self._proc_noise_cov_cholesky = proc_noise_cov_cholesky
 
-    def proc_noise_cov_cholesky_fun(self, t):
+    def proc_noise_cov_cholesky_fun(self):
         return self.proc_noise_cov_cholesky
 
     @cached_property

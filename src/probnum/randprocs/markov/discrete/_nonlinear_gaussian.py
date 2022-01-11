@@ -1,6 +1,6 @@
 """Discrete transitions."""
 
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from typing import Callable, Optional
 
 import numpy as np
@@ -108,6 +108,24 @@ class _DiscreteAsContinuousTransition(_transition.Transition):
 
     def shift_vec_fun(self, t):
         return self._discrete_transition.shift_vec_fun()
+
+    # LTI Gaussians
+
+    @cached_property
+    def proc_noise_cov_cholesky(self):
+        return self._discrete_transition.proc_noise_cov_cholesky
+
+    @property
+    def proc_noise_cov_mat(self):
+        return self._discrete_transition.proc_noise_cov_mat
+
+    @property
+    def shift_vec(self):
+        return self._discrete_transition.shift_vec
+
+    @property
+    def state_trans_mat(self):
+        return self._discrete_transition.state_trans_mat
 
     # Other wrappers:
     def _forward_rv_classic(

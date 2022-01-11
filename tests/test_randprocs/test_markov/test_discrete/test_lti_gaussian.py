@@ -28,14 +28,14 @@ class TestLTIGaussian(test_linear_gaussian.TestLinearGaussian):
             self.S_const,
             forward_implementation=forw_impl_string_linear_gauss,
             backward_implementation=backw_impl_string_linear_gauss,
-        )
+        ).as_continuous_transition()
 
         # Compatibility with superclass' test
-        self.G = lambda t: self.G_const
-        self.S = lambda t: self.S_const
-        self.v = lambda t: self.v_const
-        self.g = lambda t, x: self.G(t) @ x + self.v(t)
-        self.dg = lambda t, x: self.G(t)
+        self.G = lambda: self.G_const
+        self.S = lambda: self.S_const
+        self.v = lambda: self.v_const
+        self.g = lambda x: self.G() @ x + self.v()
+        self.dg = lambda x: self.G()
 
     # Test access to system matrices
 
