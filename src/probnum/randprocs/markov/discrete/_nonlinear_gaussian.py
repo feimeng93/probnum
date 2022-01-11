@@ -11,7 +11,94 @@ from probnum.randprocs.markov.discrete import _condition_state
 from probnum.typing import FloatLike, IntLike
 
 
-class NonlinearGaussian(_transition.Transition):
+class _DiscreteAsContinuousTransition(_transition.Transition):
+    def __init__(self, discrete_transition):
+        super().__init__(
+            input_dim=discrete_transition.input_dim,
+            output_dim=discrete_transition.output_dim,
+        )
+        self._discrete_transition = discrete_transition
+
+    def forward_rv(
+        self, rv, t, dt=None, compute_gain=False, _diffusion=1.0, _linearise_at=None
+    ):
+        return self._discrete_transition.forward_rv(
+            rv=rv,
+            compute_gain=compute_gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def forward_realization(
+        self,
+        realization,
+        t,
+        dt=None,
+        compute_gain=False,
+        _diffusion=1.0,
+        _linearise_at=None,
+    ):
+        return self._discrete_transition.forward_realization(
+            realization=realization,
+            compute_gain=compute_gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def backward_rv(
+        self,
+        rv_obtained,
+        rv,
+        rv_forwarded=None,
+        gain=None,
+        t=None,
+        dt=None,
+        _diffusion=1.0,
+        _linearise_at=None,
+    ):
+        return self._discrete_transition.backward_rv(
+            rv_obtained=rv_obtained,
+            rv=rv,
+            rv_forwarded=rv_forwarded,
+            gain=gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def backward_realization(
+        self,
+        realization_obtained,
+        rv,
+        rv_forwarded=None,
+        gain=None,
+        t=None,
+        dt=None,
+        _diffusion=1.0,
+        _linearise_at=None,
+    ):
+        return self._discrete_transition.backward_realization(
+            realization_obtained=realization_obtained,
+            rv=rv,
+            rv_forwarded=rv_forwarded,
+            gain=gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def state_trans_fun(self, t, x):
+        return self._discrete_transition.state_trans_fun(x)
+
+    def jacob_state_trans_fun(self, t, x):
+        return self._discrete_transition.jacob_state_trans_fun(x)
+
+    def proc_noise_cov_mat_fun(self, t):
+        return self._discrete_transition.proc_noise_cov_mat_fun()
+
+    def proc_noise_cov_cholesky_fun(self, t):
+        return self._discrete_transition.proc_noise_cov_cholesky_fun()
+
+
+class NonlinearGaussian:
     r"""Discrete transitions with additive Gaussian noise.
 
     .. math:: x_{i+1} \sim \mathcal{N}(g(t_i, x_i), S(t_i))
@@ -58,7 +145,7 @@ class NonlinearGaussian(_transition.Transition):
         # "Private", bc. if None, overwritten by the property with the same name
         self._proc_noise_cov_cholesky_fun = proc_noise_cov_cholesky_fun
 
-        def dummy_if_no_jacobian(t, x):
+        def dummy_if_no_jacobian(x):
             raise NotImplementedError
 
         self.jacob_state_trans_fun = (
@@ -66,18 +153,22 @@ class NonlinearGaussian(_transition.Transition):
             if jacob_state_trans_fun is not None
             else dummy_if_no_jacobian
         )
-        super().__init__(input_dim=input_dim, output_dim=output_dim)
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
+    def as_continuous_transition(self):
+        return _DiscreteAsContinuousTransition(self)
 
     def forward_realization(
-        self, realization, t, compute_gain=False, _diffusion=1.0, **kwargs
+        self, realization, compute_gain=False, _diffusion=1.0, **kwargs
     ):
 
-        newmean = self.state_trans_fun(t, realization)
-        newcov = _diffusion * self.proc_noise_cov_mat_fun(t)
+        newmean = self.state_trans_fun(realization)
+        newcov = _diffusion * self.proc_noise_cov_mat_fun()
 
         return randvars.Normal(newmean, newcov), {}
 
-    def forward_rv(self, rv, t, compute_gain=False, _diffusion=1.0, **kwargs):
+    def forward_rv(self, rv, compute_gain=False, _diffusion=1.0, **kwargs):
         raise NotImplementedError("Not available")
 
     def backward_realization(
@@ -86,7 +177,6 @@ class NonlinearGaussian(_transition.Transition):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=1.0,
         **kwargs,
     ):
@@ -98,7 +188,6 @@ class NonlinearGaussian(_transition.Transition):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=1.0,
         **kwargs,
     ):
@@ -120,7 +209,6 @@ class NonlinearGaussian(_transition.Transition):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=None,
         _linearise_at=None,
     ):
@@ -128,7 +216,6 @@ class NonlinearGaussian(_transition.Transition):
         if rv_forwarded is None or gain is None:
             rv_forwarded, info_forwarded = self.forward_rv(
                 rv,
-                t=t,
                 compute_gain=True,
                 _diffusion=_diffusion,
                 _linearise_at=_linearise_at,
@@ -141,10 +228,10 @@ class NonlinearGaussian(_transition.Transition):
         )
 
     @lru_cache(maxsize=None)
-    def proc_noise_cov_cholesky_fun(self, t):
+    def proc_noise_cov_cholesky_fun(self):
         if self._proc_noise_cov_cholesky_fun is not None:
-            return self._proc_noise_cov_cholesky_fun(t)
-        covmat = self.proc_noise_cov_mat_fun(t)
+            return self._proc_noise_cov_cholesky_fun()
+        covmat = self.proc_noise_cov_mat_fun()
         return np.linalg.cholesky(covmat)
 
     @classmethod
@@ -157,10 +244,10 @@ class NonlinearGaussian(_transition.Transition):
     ):
         """Turn a callable into a deterministic transition."""
 
-        def diff(t):
+        def diff():
             return np.zeros((output_dim, output_dim))
 
-        def diff_cholesky(t):
+        def diff_cholesky():
             return np.zeros((output_dim, output_dim))
 
         return cls(

@@ -19,9 +19,9 @@ class TestNonlinearGaussian(test_transition.InterfaceTestTransition):
     @pytest.fixture(autouse=True)
     def _setup(self, test_ndim, spdmat1):
 
-        self.g = lambda t, x: np.sin(x)
-        self.S = lambda t: spdmat1
-        self.dg = lambda t, x: np.cos(x)
+        self.g = lambda x: np.sin(x)
+        self.S = lambda: spdmat1
+        self.dg = lambda x: np.cos(x)
         self.transition = randprocs.markov.discrete.NonlinearGaussian(
             test_ndim,
             test_ndim,
@@ -29,18 +29,18 @@ class TestNonlinearGaussian(test_transition.InterfaceTestTransition):
             self.S,
             self.dg,
             None,
-        )
+        ).as_continuous_transition()
 
     # Test access to system matrices
 
     def test_state_transition(self, some_normal_rv1):
         received = self.transition.state_trans_fun(0.0, some_normal_rv1.mean)
-        expected = self.g(0.0, some_normal_rv1.mean)
+        expected = self.g(some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
     def test_process_noise(self):
         received = self.transition.proc_noise_cov_mat_fun(0.0)
-        expected = self.S(0.0)
+        expected = self.S()
         np.testing.assert_allclose(received, expected)
 
     def test_process_noise_cholesky(self):
@@ -50,7 +50,7 @@ class TestNonlinearGaussian(test_transition.InterfaceTestTransition):
 
     def test_jacobian(self, some_normal_rv1):
         received = self.transition.jacob_state_trans_fun(0.0, some_normal_rv1.mean)
-        expected = self.dg(0.0, some_normal_rv1.mean)
+        expected = self.dg(some_normal_rv1.mean)
         np.testing.assert_allclose(received, expected)
 
     # Test forward and backward implementations
