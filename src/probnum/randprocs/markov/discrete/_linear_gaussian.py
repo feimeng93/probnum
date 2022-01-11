@@ -70,15 +70,15 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
-            state_trans_fun=lambda t, x: (
-                self.state_trans_mat_fun(t) @ x + self.shift_vec_fun(t)
+            state_trans_fun=lambda x: (
+                self.state_trans_mat_fun() @ x + self.shift_vec_fun()
             ),
             proc_noise_cov_mat_fun=proc_noise_cov_mat_fun,
             proc_noise_cov_cholesky_fun=proc_noise_cov_cholesky_fun,
-            jacob_state_trans_fun=lambda t, x: state_trans_mat_fun(t),
+            jacob_state_trans_fun=lambda x: state_trans_mat_fun(),
         )
 
-    def forward_rv(self, rv, t, compute_gain=False, _diffusion=1.0, **kwargs):
+    def forward_rv(self, rv, compute_gain=False, _diffusion=1.0, **kwargs):
 
         if config.matrix_free and not isinstance(rv.cov, linops.LinearOperator):
             warnings.warn(
@@ -92,15 +92,14 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
 
         return self._forward_implementation(
             rv=rv,
-            t=t,
             compute_gain=compute_gain,
             _diffusion=_diffusion,
         )
 
-    def forward_realization(self, realization, t, _diffusion=1.0, **kwargs):
+    def forward_realization(self, realization, _diffusion=1.0, **kwargs):
 
         return self._forward_realization_via_forward_rv(
-            realization, t=t, compute_gain=False, _diffusion=_diffusion
+            realization, compute_gain=False, _diffusion=_diffusion
         )
 
     def backward_rv(
@@ -109,7 +108,6 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=1.0,
         **kwargs,
     ):
@@ -132,7 +130,6 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
             rv=rv,
             rv_forwarded=rv_forwarded,
             gain=gain,
-            t=t,
             _diffusion=_diffusion,
         )
 
@@ -142,7 +139,6 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=1.0,
         **kwargs,
     ):
@@ -151,7 +147,6 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
             rv,
             rv_forwarded=rv_forwarded,
             gain=gain,
-            t=t,
             _diffusion=_diffusion,
         )
 
@@ -159,11 +154,11 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
     # _backward_rv_classic is inherited from NonlinearGaussian
 
     def _forward_rv_classic(
-        self, rv, t, compute_gain=False, _diffusion=1.0
+        self, rv, compute_gain=False, _diffusion=1.0, **kwargs
     ) -> Tuple[randvars.RandomVariable, typing.Dict]:
-        H = self.state_trans_mat_fun(t)
-        R = self.proc_noise_cov_mat_fun(t)
-        shift = self.shift_vec_fun(t)
+        H = self.state_trans_mat_fun()
+        R = self.proc_noise_cov_mat_fun()
+        shift = self.shift_vec_fun()
 
         new_mean = H @ rv.mean + shift
         crosscov = rv.cov @ H.T
@@ -179,7 +174,7 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         return randvars.Normal(new_mean, cov=new_cov), info
 
     def _forward_rv_sqrt(
-        self, rv, t, compute_gain=False, _diffusion=1.0
+        self, rv, compute_gain=False, _diffusion=1.0, **kwargs
     ) -> Tuple[randvars.RandomVariable, typing.Dict]:
 
         if config.matrix_free:
@@ -187,9 +182,9 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
                 "Sqrt-implementation does not work with linops for now."
             )
 
-        H = self.state_trans_mat_fun(t)
-        SR = self.proc_noise_cov_cholesky_fun(t)
-        shift = self.shift_vec_fun(t)
+        H = self.state_trans_mat_fun()
+        SR = self.proc_noise_cov_cholesky_fun()
+        shift = self.shift_vec_fun()
 
         new_mean = H @ rv.mean + shift
         new_cov_cholesky = cholesky_update(
@@ -213,7 +208,6 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=1.0,
     ) -> Tuple[randvars.RandomVariable, typing.Dict]:
         """See Section 4.1f of:
@@ -234,15 +228,15 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         if gain is None:
             if np.linalg.norm(rv_obtained.cov) > 0:
                 rv_forwarded, info_forwarded = self.forward_rv(
-                    rv, t=t, compute_gain=True, _diffusion=_diffusion
+                    rv, compute_gain=True, _diffusion=_diffusion
                 )
                 gain = info_forwarded["gain"]
             else:
                 gain = np.zeros((len(rv.mean), len(rv_obtained.mean)))
 
-        state_trans = self.state_trans_mat_fun(t)
-        proc_noise_chol = np.sqrt(_diffusion) * self.proc_noise_cov_cholesky_fun(t)
-        shift = self.shift_vec_fun(t)
+        state_trans = self.state_trans_mat_fun()
+        proc_noise_chol = np.sqrt(_diffusion) * self.proc_noise_cov_cholesky_fun()
+        shift = self.shift_vec_fun()
 
         chol_past = rv.cov_cholesky
         chol_obtained = rv_obtained.cov_cholesky
@@ -287,20 +281,19 @@ class LinearGaussian(_nonlinear_gaussian.NonlinearGaussian):
         rv,
         rv_forwarded=None,
         gain=None,
-        t=None,
         _diffusion=None,
     ) -> Tuple[randvars.RandomVariable, typing.Dict]:
         # forwarded_rv is ignored in Joseph updates.
 
         if gain is None:
             rv_forwarded, info_forwarded = self.forward_rv(
-                rv, t=t, compute_gain=True, _diffusion=_diffusion
+                rv, compute_gain=True, _diffusion=_diffusion
             )
             gain = info_forwarded["gain"]
 
-        H = self.state_trans_mat_fun(t)
-        R = _diffusion * self.proc_noise_cov_mat_fun(t)
-        shift = self.shift_vec_fun(t)
+        H = self.state_trans_mat_fun()
+        R = _diffusion * self.proc_noise_cov_mat_fun()
+        shift = self.shift_vec_fun()
 
         new_mean = rv.mean + gain @ (rv_obtained.mean - H @ rv.mean - shift)
         joseph_factor = np.eye(len(rv.mean)) - gain @ H

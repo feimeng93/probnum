@@ -37,32 +37,32 @@ class TestLinearGaussian(test_nonlinear_gaussian.TestNonlinearGaussian):
         backw_impl_string_linear_gauss,
     ):
 
-        self.G = lambda t: spdmat1
-        self.S = lambda t: spdmat2
-        self.v = lambda t: np.arange(test_ndim)
+        self.G = lambda: spdmat1
+        self.S = lambda: spdmat2
+        self.v = lambda: np.arange(test_ndim)
         self.transition = randprocs.markov.discrete.LinearGaussian(
-            test_ndim,
-            test_ndim,
-            self.G,
-            self.v,
-            self.S,
+            input_dim=test_ndim,
+            output_dim=test_ndim,
+            state_trans_mat_fun=self.G,
+            shift_vec_fun=self.v,
+            proc_noise_cov_mat_fun=self.S,
             forward_implementation=forw_impl_string_linear_gauss,
             backward_implementation=backw_impl_string_linear_gauss,
-        )
+        ).as_continuous_transition()
 
-        self.g = lambda t, x: self.G(t) @ x + self.v(t)
-        self.dg = lambda t, x: self.G(t)
+        self.g = lambda x: self.G() @ x + self.v()
+        self.dg = lambda x: self.G()
 
     # Test access to system matrices
 
     def test_state_transition_mat_fun(self):
         received = self.transition.state_trans_mat_fun(0.0)
-        expected = self.G(0.0)
+        expected = self.G()
         np.testing.assert_allclose(received, expected)
 
     def test_shift_vec_fun(self):
         received = self.transition.shift_vec_fun(0.0)
-        expected = self.v(0.0)
+        expected = self.v()
         np.testing.assert_allclose(received, expected)
 
     # Test forward and backward implementations
@@ -83,6 +83,8 @@ class TestLinearGaussian(test_nonlinear_gaussian.TestNonlinearGaussian):
 
     def test_all_forward_rv_same(self, some_normal_rv1, diffusion):
         """Assert all implementations give the same output."""
+        print(self.transition)
+
         out_classic, info_classic = self.transition._forward_rv_classic(
             some_normal_rv1, 0.0, compute_gain=True, _diffusion=diffusion
         )
@@ -258,41 +260,42 @@ class TestLinearGaussianLinOps:
         spdmat2,
     ):
         with config(matrix_free=True):
-            self.G = lambda t: linops.aslinop(spdmat1)
-            self.S = lambda t: linops.aslinop(spdmat2)
-            self.v = lambda t: np.arange(test_ndim)
+            self.G = lambda: linops.aslinop(spdmat1)
+            self.S = lambda: linops.aslinop(spdmat2)
+            self.v = lambda: np.arange(test_ndim)
             self.transition = randprocs.markov.discrete.LinearGaussian(
-                test_ndim,
-                test_ndim,
-                self.G,
-                self.v,
-                self.S,
+                input_dim=test_ndim,
+                output_dim=test_ndim,
+                state_trans_mat_fun=self.G,
+                shift_vec_fun=self.v,
+                proc_noise_cov_mat_fun=self.S,
                 forward_implementation="classic",
                 backward_implementation="classic",
-            )
+            ).as_continuous_transition()
+
             self.sqrt_transition = randprocs.markov.discrete.LinearGaussian(
-                test_ndim,
-                test_ndim,
-                self.G,
-                self.v,
-                self.S,
+                input_dim=test_ndim,
+                output_dim=test_ndim,
+                state_trans_mat_fun=self.G,
+                shift_vec_fun=self.v,
+                proc_noise_cov_mat_fun=self.S,
                 forward_implementation="sqrt",
                 backward_implementation="sqrt",
-            )
+            ).as_continuous_transition()
 
-            self.g = lambda t, x: self.G(t) @ x + self.v(t)
-            self.dg = lambda t, x: self.G(t)
+            self.g = lambda x: self.G() @ x + self.v()
+            self.dg = lambda x: self.G()
 
     # Test access to system matrices
 
     def test_state_transition_mat_fun(self):
         received = self.transition.state_trans_mat_fun(0.0)
-        expected = self.G(0.0)
+        expected = self.G()
         np.testing.assert_allclose(received.todense(), expected.todense())
 
     def test_shift_vec_fun(self):
         received = self.transition.shift_vec_fun(0.0)
-        expected = self.v(0.0)
+        expected = self.v()
         np.testing.assert_allclose(received, expected)
 
     # Test forward and backward implementations

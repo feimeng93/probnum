@@ -85,6 +85,10 @@ class _DiscreteAsContinuousTransition(_transition.Transition):
             _linearise_at=_linearise_at,
         )
 
+    # Special arguments.
+
+    # Nonlinear Gaussians:
+
     def state_trans_fun(self, t, x):
         return self._discrete_transition.state_trans_fun(x)
 
@@ -96,6 +100,44 @@ class _DiscreteAsContinuousTransition(_transition.Transition):
 
     def proc_noise_cov_cholesky_fun(self, t):
         return self._discrete_transition.proc_noise_cov_cholesky_fun()
+
+    # Linear Gaussians:
+
+    def state_trans_mat_fun(self, t):
+        return self._discrete_transition.state_trans_mat_fun()
+
+    def shift_vec_fun(self, t):
+        return self._discrete_transition.shift_vec_fun()
+
+    # Other wrappers:
+    def _forward_rv_classic(
+        self, rv, t, dt=None, compute_gain=False, _diffusion=1.0, _linearise_at=None
+    ):
+        return self._discrete_transition._forward_rv_classic(
+            rv=rv,
+            compute_gain=compute_gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def _forward_rv_sqrt(
+        self, rv, t, dt=None, compute_gain=False, _diffusion=1.0, _linearise_at=None
+    ):
+        return self._discrete_transition._forward_rv_sqrt(
+            rv=rv,
+            compute_gain=compute_gain,
+            _diffusion=_diffusion,
+            _linearise_at=_linearise_at,
+        )
+
+    def _backward_rv_classic(self, *args, t, **kwargs):
+        return self._discrete_transition._backward_rv_classic(*args, **kwargs)
+
+    def _backward_rv_sqrt(self, *args, t, **kwargs):
+        return self._discrete_transition._backward_rv_sqrt(*args, **kwargs)
+
+    def _backward_rv_joseph(self, *args, t, **kwargs):
+        return self._discrete_transition._backward_rv_joseph(*args, **kwargs)
 
 
 class NonlinearGaussian:
@@ -158,6 +200,14 @@ class NonlinearGaussian:
 
     def as_continuous_transition(self):
         return _DiscreteAsContinuousTransition(self)
+
+    def _backward_realization_via_backward_rv(self, realization, *args, **kwargs):
+        real_as_rv = randvars.Constant(support=realization)
+        return self.backward_rv(real_as_rv, *args, **kwargs)
+
+    def _forward_realization_via_forward_rv(self, realization, *args, **kwargs):
+        real_as_rv = randvars.Constant(support=realization)
+        return self.forward_rv(real_as_rv, *args, **kwargs)
 
     def forward_realization(
         self, realization, compute_gain=False, _diffusion=1.0, **kwargs
