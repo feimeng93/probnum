@@ -103,7 +103,7 @@ class TestIntegratedWienerTransition(
         assert isinstance(out, randprocs.markov.discrete.LTIGaussian)
 
 
-class TestIBMLinOps(test_lti_sde.TestLTISDE, test_integrator.TestIntegratorTransition):
+class TestIWPLinOps(test_lti_sde.TestLTISDE, test_integrator.TestIntegratorTransition):
 
     # Replacement for an __init__ in the pytest language. See:
     # https://stackoverflow.com/questions/21430900/py-test-skips-test-class-if-constructor-is-defined
