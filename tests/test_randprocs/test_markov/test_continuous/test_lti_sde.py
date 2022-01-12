@@ -39,10 +39,6 @@ class TestLTISDE(test_linear_sde.TestLinearSDE):
         self.dg = lambda t, x: self.G(t)
         self.l = lambda t, x: self.L(t)
 
-    def test_discretise(self):
-        out = self.transition.discretise(dt=0.1)
-        assert isinstance(out, randprocs.markov.discrete.LTIGaussian)
-
     def test_backward_rv(self, some_normal_rv1, some_normal_rv2):
         out, _ = self.transition.backward_rv(
             some_normal_rv1, some_normal_rv2, t=0.0, dt=0.1
