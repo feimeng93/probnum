@@ -212,7 +212,7 @@ class IntegratedWienerTransition(_integrator.IntegratorTransition, continuous.LT
             proc_noise_cov_cholesky=process_noise_cholesky,
             forward_implementation=self.forward_implementation,
             backward_implementation=self.backward_implementation,
-        )
+        ).as_continuous_transition()
 
     def forward_rv(
         self,
@@ -312,4 +312,4 @@ class IntegratedWienerTransition(_integrator.IntegratorTransition, continuous.LT
             proc_noise_cov_cholesky=proc_noise_cov_cholesky,
             forward_implementation=self.forward_implementation,
             backward_implementation=self.forward_implementation,
-        )
+        ).as_continuous_transition()
