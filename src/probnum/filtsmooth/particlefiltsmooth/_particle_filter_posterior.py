@@ -1,8 +1,8 @@
 """Particle filtering posterior."""
 import abc
 from dataclasses import dataclass
-from functools import cached_property
-
+# from functools import cached_property
+from cached_property import cached_property
 import numpy as np
 
 from probnum.filtsmooth.bayesfiltsmooth import BayesFiltSmooth

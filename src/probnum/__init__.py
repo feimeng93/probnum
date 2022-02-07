@@ -26,7 +26,7 @@ problems
 utils
     Utility functions.
 """
-
+from ._config import _GLOBAL_CONFIG_SINGLETON as config
 from pkg_resources import DistributionNotFound, get_distribution
 
 from . import (
@@ -40,6 +40,8 @@ from . import (
     random_variables,
     statespace,
     utils,
+pnmethod,
+randprocs,
 )
 from .random_variables import RandomVariable, asrandvar
 

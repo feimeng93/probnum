@@ -687,7 +687,7 @@ class SymmetricMatrixBasedSolver(MatrixBasedSolver):
 
         return calibration_term_A, calibration_term_Ainv
 
-    def _get_output_randvars(self, Y_list, sy_list, phi=None, psi=None):
+    def _get_output_random_variables(self, Y_list, sy_list, phi=None, psi=None):
         """Return output random variables x, A, Ainv from their means and
         covariances."""
 
@@ -868,7 +868,7 @@ class SymmetricMatrixBasedSolver(MatrixBasedSolver):
         )
 
         # Create output random variables
-        x, A, Ainv = self._get_output_randvars(
+        x, A, Ainv = self._get_output_random_variables(
             Y_list=self.obs_list, sy_list=self.sy, phi=phi, psi=psi
         )
 
@@ -956,7 +956,7 @@ class SymmetricMatrixBasedSolver(MatrixBasedSolver):
             ).item()
 
             # Create output random variables
-            x, A, Ainv = self._get_output_randvars(
+            x, A, Ainv = self._get_output_random_variables(
                 Y_list=self.obs_list, sy_list=self.sy, phi=phi, psi=psi
             )
 
